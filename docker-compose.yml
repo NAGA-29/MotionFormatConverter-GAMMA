@@ -26,6 +26,8 @@ services:
       - CONVERSION_TIMEOUT=300
       - CACHE_DURATION=3600
       - LOG_LEVEL=DEBUG
+      - LOG_FORMAT=plain
+      # - LOG_FILE=/var/log/blender-api.log
     depends_on:
       - redis
     restart: unless-stopped
