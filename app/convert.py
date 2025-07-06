@@ -3,6 +3,7 @@ import os
 import sys
 import tempfile
 import logging
+from app.utils.logger import AppLogger
 from flask import Flask, request, jsonify, send_file
 import shutil
 from werkzeug.utils import secure_filename
@@ -20,12 +21,8 @@ import io
 import gc
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
+logger = AppLogger.get_logger(__name__)
+logger.debug("convert module loaded")
 
 app = Flask(__name__)
 

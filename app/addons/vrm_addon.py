@@ -2,6 +2,10 @@ import bpy
 from bpy.props import StringProperty
 from bpy_extras.io_utils import ImportHelper, ExportHelper
 
+from app.utils.logger import AppLogger
+
+logger = AppLogger.get_logger(__name__)
+
 bl_info = {
     "name": "VRM Format",
     "author": "saturday06",
@@ -21,6 +25,7 @@ class ImportVRM(bpy.types.Operator, ImportHelper):
     filter_glob: StringProperty(default="*.vrm", options={"HIDDEN"})
 
     def execute(self, context):
+        logger.info("ImportVRM.execute called")
         try:
             # Import as GLB first
             temp_filepath = self.filepath + ".temp.glb"
@@ -39,8 +44,10 @@ class ImportVRM(bpy.types.Operator, ImportHelper):
             if os.path.exists(temp_filepath):
                 os.remove(temp_filepath)
                 
+            logger.info("VRM import finished")
             return {"FINISHED"}
         except Exception as e:
+            logger.error("Error importing VRM: %s", e)
             self.report({"ERROR"}, f"Error importing VRM: {str(e)}")
             return {"CANCELLED"}
 
@@ -51,6 +58,7 @@ class ExportVRM(bpy.types.Operator, ExportHelper):
     filter_glob: StringProperty(default="*.vrm", options={"HIDDEN"})
 
     def execute(self, context):
+        logger.info("ExportVRM.execute called")
         try:
             # Export as GLB first
             temp_filepath = self.filepath + ".temp.glb"
@@ -74,8 +82,10 @@ class ExportVRM(bpy.types.Operator, ExportHelper):
             # Convert GLB to VRM
             import shutil
             shutil.move(temp_filepath, self.filepath)
+            logger.info("VRM export finished")
             return {"FINISHED"}
         except Exception as e:
+            logger.error("Error exporting VRM: %s", e)
             self.report({"ERROR"}, f"Error exporting VRM: {str(e)}")
             return {"CANCELLED"}
 
@@ -90,6 +100,8 @@ _registered_classes = set()
 def register():
     global _registered_classes
     classes = [ImportVRM, ExportVRM]
+
+    logger.debug("Registering VRM addon classes")
     
     for cls in classes:
         if cls not in _registered_classes:
@@ -102,9 +114,11 @@ def register():
     
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
+    logger.info("VRM addon registered")
 
 def unregister():
     global _registered_classes
+    logger.debug("Unregistering VRM addon classes")
     for cls in _registered_classes:
         try:
             bpy.utils.unregister_class(cls)
@@ -114,3 +128,4 @@ def unregister():
     
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
+    logger.info("VRM addon unregistered")

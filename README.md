@@ -33,6 +33,20 @@ docker run -p 5000:5000 blender-converter
 | `RATE_LIMIT_WINDOW` | レートリミット対象の時間窓(秒) | `60` |
 | `CONVERSION_TIMEOUT` | 変換処理のタイムアウト(秒) | `300` |
 | `CACHE_DURATION` | 変換結果をキャッシュする時間(秒) | `3600` |
+| `LOG_LEVEL` | ログ出力レベル | `INFO` |
+| `LOG_FORMAT` | `plain` または `json` 形式のログフォーマット | `plain` |
+| `LOG_FILE` | ログを出力するファイルパス(任意) | - |
+
+### ログ出力設定
+`LOG_LEVEL` と `LOG_FORMAT` を組み合わせることで、コンソールやファイルへ出力
+するログの内容を調整できます。`LOG_FILE` を指定すると自動的にローテーションさ
+れるファイルハンドラーが有効になります。
+
+例:
+```bash
+LOG_LEVEL=DEBUG LOG_FORMAT=json LOG_FILE=/var/log/blender-api.log \
+docker compose up
+```
 
 ## 変換エンドポイント一覧と使用例
 以下はいずれも `POST` でファイルを送信します。変換後のファイルがレスポンスとして返されます。
