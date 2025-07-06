@@ -2,7 +2,12 @@ import unittest
 import os
 import tempfile
 from unittest.mock import patch, Mock
-from convert import app
+import sys
+
+# Stub bpy to avoid ImportError during tests
+sys.modules.setdefault('bpy', Mock())
+
+from app.convert import app
 import time
 
 class TestFileConversion(unittest.TestCase):
@@ -60,7 +65,7 @@ class TestFileConversion(unittest.TestCase):
             self.assertEqual(response.status_code, 400)
             self.assertTrue('error' in response.json)
 
-    @patch('convert.convert_file')
+    @patch('app.convert.convert_file')
     def test_successful_conversion(self, mock_convert):
         # Mock successful conversion
         mock_convert.return_value = (True, "Conversion successful")
@@ -73,7 +78,7 @@ class TestFileConversion(unittest.TestCase):
             response = self.app.post('/convert/fbx-to-glb', data=data)
             self.assertEqual(response.status_code, 200)
 
-    @patch('convert.convert_file')
+    @patch('app.convert.convert_file')
     def test_conversion_error(self, mock_convert):
         # Mock conversion error
         mock_convert.return_value = (False, "Error during conversion")
@@ -101,7 +106,7 @@ class TestFileConversion(unittest.TestCase):
         rate_limited = any(r.status_code == 429 for r in responses)
         self.assertTrue(rate_limited)
 
-    @patch('convert.convert_file')
+    @patch('app.convert.convert_file')
     def test_timeout_handling(self, mock_convert):
         # Mock a timeout during conversion
         def timeout_side_effect(*args, **kwargs):
@@ -156,7 +161,7 @@ class TestFileConversion(unittest.TestCase):
         """Test that temporary files are cleaned up after an error"""
         temp_dir = None
         
-        @patch('convert.convert_file')
+        @patch('app.convert.convert_file')
         def mock_conversion(mock_convert):
             mock_convert.return_value = (False, "Simulated error")
             
