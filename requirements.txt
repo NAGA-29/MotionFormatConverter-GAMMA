@@ -1,0 +1,6 @@
+Flask
+requests
+pillow
+numpy
+urllib3
+redis
