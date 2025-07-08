@@ -26,8 +26,11 @@ class TestFileConversion(unittest.TestCase):
         self.assertEqual(response.json['error'], 'No file provided')
 
     def test_invalid_file_format(self):
+        temp_file = tempfile.NamedTemporaryFile(suffix='.txt')
+        temp_file.write(b'data')
+        temp_file.seek(0)
         data = {
-            'file': (tempfile.NamedTemporaryFile(suffix='.txt'), 'test.txt')
+            'file': (temp_file, 'test.txt')
         }
         response = self.app.post('/convert/fbx-to-glb', data=data)
         self.assertEqual(response.status_code, 400)
@@ -72,6 +75,8 @@ class TestFileConversion(unittest.TestCase):
         
         # Create a temporary FBX file
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
             data = {
                 'file': (temp_file, 'test.fbx')
             }
@@ -84,6 +89,8 @@ class TestFileConversion(unittest.TestCase):
         mock_convert.return_value = (False, "Error during conversion")
         
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
             data = {
                 'file': (temp_file, 'test.fbx')
             }
@@ -96,6 +103,8 @@ class TestFileConversion(unittest.TestCase):
         responses = []
         for _ in range(10):  # Adjust based on your rate limit
             with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+                temp_file.write(b'data')
+                temp_file.seek(0)
                 data = {
                     'file': (temp_file, 'test.fbx')
                 }
@@ -114,8 +123,10 @@ class TestFileConversion(unittest.TestCase):
             return (True, "Conversion successful")
         
         mock_convert.side_effect = timeout_side_effect
-        
+
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
             data = {
                 'file': (temp_file, 'test.fbx')
             }
@@ -130,6 +141,8 @@ class TestFileConversion(unittest.TestCase):
         results = queue.Queue()
         def make_request():
             with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+                temp_file.write(b'data')
+                temp_file.seek(0)
                 data = {
                     'file': (temp_file, 'test.fbx')
                 }
@@ -164,8 +177,10 @@ class TestFileConversion(unittest.TestCase):
         @patch('app.convert.convert_file')
         def mock_conversion(mock_convert):
             mock_convert.return_value = (False, "Simulated error")
-            
+
             with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+                temp_file.write(b'data')
+                temp_file.seek(0)
                 data = {
                     'file': (temp_file, 'test.fbx')
                 }
@@ -194,6 +209,8 @@ class TestFileConversion(unittest.TestCase):
                 if input_format != output_format:
                     with self.subTest(f"{input_format} to {output_format}"):
                         with tempfile.NamedTemporaryFile(suffix=f'.{input_format}') as temp_file:
+                            temp_file.write(b'data')
+                            temp_file.seek(0)
                             data = {
                                 'file': (temp_file, f'test.{input_format}')
                             }
