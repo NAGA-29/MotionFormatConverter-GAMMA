@@ -169,13 +169,13 @@ def validate_file_size(file):
     file.seek(0, os.SEEK_END)
     size = file.tell()
     file.seek(0)
-    
+
     if size > MAX_FILE_SIZE:
-        return False, f"File size exceeds maximum limit of {MAX_FILE_SIZE/1024/1024}MB"
+        return False, f"File size exceeds maximum limit of {MAX_FILE_SIZE/1024/1024}MB", True
     elif size == 0:
-        return False, "File is empty"
-        
-    return True, None
+        return False, "File is empty", False
+
+    return True, None, False
 
 def clear_scene():
     """Clear the current scene"""
@@ -480,10 +480,11 @@ def handle_conversion(request, input_format, output_format):
             return jsonify({"error": error}), 400
             
         # Validate file size
-        success, error = validate_file_size(file)
+        success, error, too_large = validate_file_size(file)
         if not success:
             logger.error(f"File size validation failed: {error}")
-            return jsonify({"error": error}), 400
+            status_code = 413 if too_large else 400
+            return jsonify({"error": error}), status_code
         
         # Create output directory if it doesn't exist
         output_dir = '/app/output'
@@ -745,6 +746,24 @@ def convert_gltf_to_fbx():
 def convert_gltf_to_vrm():
     """Convert GLTF to VRM"""
     return handle_conversion(request, 'gltf', 'vrm')
+
+@app.route('/convert/gltf-to-glb', methods=['POST'])
+@rate_limit
+def convert_gltf_to_glb():
+    """Convert GLTF to GLB"""
+    return handle_conversion(request, 'gltf', 'glb')
+
+@app.route('/convert/glb-to-gltf', methods=['POST'])
+@rate_limit
+def convert_glb_to_gltf():
+    """Convert GLB to GLTF"""
+    return handle_conversion(request, 'glb', 'gltf')
+
+@app.route('/convert/vrm-to-gltf', methods=['POST'])
+@rate_limit
+def convert_vrm_to_gltf():
+    """Convert VRM to GLTF"""
+    return handle_conversion(request, 'vrm', 'gltf')
 
 @app.route('/convert/glb-to-obj', methods=['POST'])
 @rate_limit

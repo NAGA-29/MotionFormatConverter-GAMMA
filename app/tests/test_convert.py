@@ -26,8 +26,11 @@ class TestFileConversion(unittest.TestCase):
         self.assertEqual(response.json['error'], 'No file provided')
 
     def test_invalid_file_format(self):
+        temp = tempfile.NamedTemporaryFile(suffix='.txt')
+        temp.write(b'data')
+        temp.seek(0)
         data = {
-            'file': (tempfile.NamedTemporaryFile(suffix='.txt'), 'test.txt')
+            'file': (temp, 'test.txt')
         }
         response = self.app.post('/convert/fbx-to-glb', data=data)
         self.assertEqual(response.status_code, 400)
@@ -72,6 +75,8 @@ class TestFileConversion(unittest.TestCase):
         
         # Create a temporary FBX file
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
             data = {
                 'file': (temp_file, 'test.fbx')
             }
@@ -84,6 +89,8 @@ class TestFileConversion(unittest.TestCase):
         mock_convert.return_value = (False, "Error during conversion")
         
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
             data = {
                 'file': (temp_file, 'test.fbx')
             }
@@ -96,6 +103,8 @@ class TestFileConversion(unittest.TestCase):
         responses = []
         for _ in range(10):  # Adjust based on your rate limit
             with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+                temp_file.write(b'data')
+                temp_file.seek(0)
                 data = {
                     'file': (temp_file, 'test.fbx')
                 }
@@ -116,6 +125,8 @@ class TestFileConversion(unittest.TestCase):
         mock_convert.side_effect = timeout_side_effect
         
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
             data = {
                 'file': (temp_file, 'test.fbx')
             }
@@ -130,6 +141,8 @@ class TestFileConversion(unittest.TestCase):
         results = queue.Queue()
         def make_request():
             with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+                temp_file.write(b'data')
+                temp_file.seek(0)
                 data = {
                     'file': (temp_file, 'test.fbx')
                 }
@@ -166,6 +179,8 @@ class TestFileConversion(unittest.TestCase):
             mock_convert.return_value = (False, "Simulated error")
             
             with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+                temp_file.write(b'data')
+                temp_file.seek(0)
                 data = {
                     'file': (temp_file, 'test.fbx')
                 }
@@ -185,6 +200,36 @@ class TestFileConversion(unittest.TestCase):
         if temp_dir:
             self.assertFalse(os.path.exists(temp_dir))
 
+    def test_gltf_to_glb_endpoint(self):
+        with tempfile.NamedTemporaryFile(suffix='.gltf') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
+            data = {
+                'file': (temp_file, 'model.gltf')
+            }
+            response = self.app.post('/convert/gltf-to-glb', data=data)
+            self.assertIn(response.status_code, [200, 500])
+
+    def test_glb_to_gltf_endpoint(self):
+        with tempfile.NamedTemporaryFile(suffix='.glb') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
+            data = {
+                'file': (temp_file, 'model.glb')
+            }
+            response = self.app.post('/convert/glb-to-gltf', data=data)
+            self.assertIn(response.status_code, [200, 500])
+
+    def test_vrm_to_gltf_endpoint(self):
+        with tempfile.NamedTemporaryFile(suffix='.vrm') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
+            data = {
+                'file': (temp_file, 'model.vrm')
+            }
+            response = self.app.post('/convert/vrm-to-gltf', data=data)
+            self.assertIn(response.status_code, [200, 500])
+
     def test_all_format_conversions(self):
         """Test all supported format conversion combinations"""
         formats = ['fbx', 'obj', 'gltf', 'glb', 'vrm']
@@ -194,6 +239,8 @@ class TestFileConversion(unittest.TestCase):
                 if input_format != output_format:
                     with self.subTest(f"{input_format} to {output_format}"):
                         with tempfile.NamedTemporaryFile(suffix=f'.{input_format}') as temp_file:
+                            temp_file.write(b'data')
+                            temp_file.seek(0)
                             data = {
                                 'file': (temp_file, f'test.{input_format}')
                             }
