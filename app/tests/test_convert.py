@@ -84,6 +84,36 @@ class TestFileConversion(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
 
     @patch('app.convert.convert_file')
+    def test_gltf_to_glb_endpoint(self, mock_convert):
+        mock_convert.return_value = (True, "ok")
+        with tempfile.NamedTemporaryFile(suffix='.gltf') as temp_file:
+            data = {
+                'file': (temp_file, 'test.gltf')
+            }
+            response = self.app.post('/convert/gltf-to-glb', data=data)
+            self.assertEqual(response.status_code, 200)
+
+    @patch('app.convert.convert_file')
+    def test_glb_to_gltf_endpoint(self, mock_convert):
+        mock_convert.return_value = (True, "ok")
+        with tempfile.NamedTemporaryFile(suffix='.glb') as temp_file:
+            data = {
+                'file': (temp_file, 'test.glb')
+            }
+            response = self.app.post('/convert/glb-to-gltf', data=data)
+            self.assertEqual(response.status_code, 200)
+
+    @patch('app.convert.convert_file')
+    def test_vrm_to_gltf_endpoint(self, mock_convert):
+        mock_convert.return_value = (True, "ok")
+        with tempfile.NamedTemporaryFile(suffix='.vrm') as temp_file:
+            data = {
+                'file': (temp_file, 'test.vrm')
+            }
+            response = self.app.post('/convert/vrm-to-gltf', data=data)
+            self.assertEqual(response.status_code, 200)
+
+    @patch('app.convert.convert_file')
     def test_conversion_error(self, mock_convert):
         # Mock conversion error
         mock_convert.return_value = (False, "Error during conversion")
@@ -123,7 +153,7 @@ class TestFileConversion(unittest.TestCase):
             return (True, "Conversion successful")
         
         mock_convert.side_effect = timeout_side_effect
-        
+
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
             temp_file.write(b'data')
             temp_file.seek(0)
@@ -177,7 +207,7 @@ class TestFileConversion(unittest.TestCase):
         @patch('app.convert.convert_file')
         def mock_conversion(mock_convert):
             mock_convert.return_value = (False, "Simulated error")
-            
+
             with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
                 temp_file.write(b'data')
                 temp_file.seek(0)

@@ -4,3 +4,4 @@ pillow
 numpy
 urllib3
 redis
+flasgger

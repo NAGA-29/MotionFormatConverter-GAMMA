@@ -5,6 +5,7 @@ import tempfile
 import logging
 from app.utils.logger import AppLogger
 from flask import Flask, request, jsonify, send_file
+from flasgger import Swagger, swag_from
 import shutil
 from werkzeug.utils import secure_filename
 import mimetypes
@@ -25,6 +26,7 @@ logger = AppLogger.get_logger(__name__)
 logger.debug("convert module loaded")
 
 app = Flask(__name__)
+swagger = Swagger(app)
 
 # Redis connection for rate limiting and caching
 redis_client = redis.Redis(
@@ -51,6 +53,30 @@ SUPPORTED_FORMATS = {
     'glb': ['model/gltf-binary'],
     'vrm': ['application/octet-stream', 'model/gltf-binary']
 }
+
+def conversion_doc(input_format: str, output_format: str) -> dict:
+    """Generate a basic Swagger documentation dictionary."""
+    return {
+        'tags': ['conversion'],
+        'consumes': ['multipart/form-data'],
+        'parameters': [
+            {
+                'name': 'file',
+                'in': 'formData',
+                'type': 'file',
+                'required': True,
+                'description': f'Input {input_format.upper()} file'
+            }
+        ],
+        'responses': {
+            200: {
+                'description': f'Converted {output_format.upper()} file'
+            },
+            400: {'description': 'Invalid input'},
+            429: {'description': 'Rate limit exceeded'},
+            500: {'description': 'Conversion error'}
+        }
+    }
 
 def handle_blender_error(error_type, value, tb):
     """Global error handler for Blender operations"""
@@ -165,7 +191,13 @@ def validate_file_format(file, format):
     return True, None
 
 def validate_file_size(file):
-    """Validate file size"""
+    """Validate file size
+
+    Returns a tuple ``(success, error_message, too_large)`` where ``too_large``
+    is ``True`` when the uploaded file exceeds ``MAX_FILE_SIZE``. This flag
+    allows callers to distinguish between an oversized upload and other
+    validation failures.
+    """
     file.seek(0, os.SEEK_END)
     size = file.tell()
     file.seek(0)
@@ -689,66 +721,84 @@ def initialize_blender():
 # Apply rate limiting to all conversion endpoints
 @app.route('/convert/fbx-to-glb', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('fbx', 'glb'))
 def convert_fbx_to_glb():
     """Convert FBX to GLB"""
     return handle_conversion(request, 'fbx', 'glb')
 
 @app.route('/convert/fbx-to-obj', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('fbx', 'obj'))
 def convert_fbx_to_obj():
     """Convert FBX to OBJ"""
     return handle_conversion(request, 'fbx', 'obj')
 
 @app.route('/convert/fbx-to-gltf', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('fbx', 'gltf'))
 def convert_fbx_to_gltf():
     """Convert FBX to GLTF"""
     return handle_conversion(request, 'fbx', 'gltf')
 
 @app.route('/convert/fbx-to-vrm', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('fbx', 'vrm'))
 def convert_fbx_to_vrm():
     """Convert FBX to VRM"""
     return handle_conversion(request, 'fbx', 'vrm')
 
 @app.route('/convert/vrm-to-glb', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('vrm', 'glb'))
 def convert_vrm_to_glb():
     """Convert VRM to GLB"""
     return handle_conversion(request, 'vrm', 'glb')
 
 @app.route('/convert/vrm-to-fbx', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('vrm', 'fbx'))
 def convert_vrm_to_fbx():
     """Convert VRM to FBX"""
     return handle_conversion(request, 'vrm', 'fbx')
 
 @app.route('/convert/vrm-to-obj', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('vrm', 'obj'))
 def convert_vrm_to_obj():
     """Convert VRM to OBJ"""
     return handle_conversion(request, 'vrm', 'obj')
 
+@app.route('/convert/vrm-to-gltf', methods=['POST'])
+@rate_limit
+@swag_from(conversion_doc('vrm', 'gltf'))
+def convert_vrm_to_gltf():
+    """Convert VRM to GLTF"""
+    return handle_conversion(request, 'vrm', 'gltf')
+
 @app.route('/convert/gltf-to-obj', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('gltf', 'obj'))
 def convert_gltf_to_obj():
     """Convert GLTF to OBJ"""
     return handle_conversion(request, 'gltf', 'obj')
 
 @app.route('/convert/gltf-to-fbx', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('gltf', 'fbx'))
 def convert_gltf_to_fbx():
     """Convert GLTF to FBX"""
     return handle_conversion(request, 'gltf', 'fbx')
 
 @app.route('/convert/gltf-to-vrm', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('gltf', 'vrm'))
 def convert_gltf_to_vrm():
     """Convert GLTF to VRM"""
     return handle_conversion(request, 'gltf', 'vrm')
 
 @app.route('/convert/gltf-to-glb', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('gltf', 'glb'))
 def convert_gltf_to_glb():
     """Convert GLTF to GLB"""
     return handle_conversion(request, 'gltf', 'glb')
@@ -767,42 +817,56 @@ def convert_vrm_to_gltf():
 
 @app.route('/convert/glb-to-obj', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('glb', 'obj'))
 def convert_glb_to_obj():
     """Convert GLB to OBJ"""
     return handle_conversion(request, 'glb', 'obj')
 
 @app.route('/convert/glb-to-fbx', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('glb', 'fbx'))
 def convert_glb_to_fbx():
     """Convert GLB to FBX"""
     return handle_conversion(request, 'glb', 'fbx')
 
+@app.route('/convert/glb-to-gltf', methods=['POST'])
+@rate_limit
+@swag_from(conversion_doc('glb', 'gltf'))
+def convert_glb_to_gltf():
+    """Convert GLB to GLTF"""
+    return handle_conversion(request, 'glb', 'gltf')
+
 @app.route('/convert/glb-to-vrm', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('glb', 'vrm'))
 def convert_glb_to_vrm():
     """Convert GLB to VRM"""
     return handle_conversion(request, 'glb', 'vrm')
 
 @app.route('/convert/obj-to-glb', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('obj', 'glb'))
 def convert_obj_to_glb():
     """Convert OBJ to GLB"""
     return handle_conversion(request, 'obj', 'glb')
 
 @app.route('/convert/obj-to-fbx', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('obj', 'fbx'))
 def convert_obj_to_fbx():
     """Convert OBJ to FBX"""
     return handle_conversion(request, 'obj', 'fbx')
 
 @app.route('/convert/obj-to-gltf', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('obj', 'gltf'))
 def convert_obj_to_gltf():
     """Convert OBJ to GLTF"""
     return handle_conversion(request, 'obj', 'gltf')
 
 @app.route('/convert/obj-to-vrm', methods=['POST'])
 @rate_limit
+@swag_from(conversion_doc('obj', 'vrm'))
 def convert_obj_to_vrm():
     """Convert OBJ to VRM"""
     return handle_conversion(request, 'obj', 'vrm')
