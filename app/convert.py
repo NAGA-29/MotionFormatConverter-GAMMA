@@ -803,6 +803,18 @@ def convert_gltf_to_glb():
     """Convert GLTF to GLB"""
     return handle_conversion(request, 'gltf', 'glb')
 
+@app.route('/convert/glb-to-gltf', methods=['POST'])
+@rate_limit
+def convert_glb_to_gltf():
+    """Convert GLB to GLTF"""
+    return handle_conversion(request, 'glb', 'gltf')
+
+@app.route('/convert/vrm-to-gltf', methods=['POST'])
+@rate_limit
+def convert_vrm_to_gltf():
+    """Convert VRM to GLTF"""
+    return handle_conversion(request, 'vrm', 'gltf')
+
 @app.route('/convert/glb-to-obj', methods=['POST'])
 @rate_limit
 @swag_from(conversion_doc('glb', 'obj'))

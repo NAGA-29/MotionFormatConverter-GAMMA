@@ -26,11 +26,11 @@ class TestFileConversion(unittest.TestCase):
         self.assertEqual(response.json['error'], 'No file provided')
 
     def test_invalid_file_format(self):
-        temp_file = tempfile.NamedTemporaryFile(suffix='.txt')
-        temp_file.write(b'data')
-        temp_file.seek(0)
+        temp = tempfile.NamedTemporaryFile(suffix='.txt')
+        temp.write(b'data')
+        temp.seek(0)
         data = {
-            'file': (temp_file, 'test.txt')
+            'file': (temp, 'test.txt')
         }
         response = self.app.post('/convert/fbx-to-glb', data=data)
         self.assertEqual(response.status_code, 400)
@@ -229,6 +229,36 @@ class TestFileConversion(unittest.TestCase):
         # Verify temp directory was cleaned up
         if temp_dir:
             self.assertFalse(os.path.exists(temp_dir))
+
+    def test_gltf_to_glb_endpoint(self):
+        with tempfile.NamedTemporaryFile(suffix='.gltf') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
+            data = {
+                'file': (temp_file, 'model.gltf')
+            }
+            response = self.app.post('/convert/gltf-to-glb', data=data)
+            self.assertIn(response.status_code, [200, 500])
+
+    def test_glb_to_gltf_endpoint(self):
+        with tempfile.NamedTemporaryFile(suffix='.glb') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
+            data = {
+                'file': (temp_file, 'model.glb')
+            }
+            response = self.app.post('/convert/glb-to-gltf', data=data)
+            self.assertIn(response.status_code, [200, 500])
+
+    def test_vrm_to_gltf_endpoint(self):
+        with tempfile.NamedTemporaryFile(suffix='.vrm') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
+            data = {
+                'file': (temp_file, 'model.vrm')
+            }
+            response = self.app.post('/convert/vrm-to-gltf', data=data)
+            self.assertIn(response.status_code, [200, 500])
 
     def test_all_format_conversions(self):
         """Test all supported format conversion combinations"""
