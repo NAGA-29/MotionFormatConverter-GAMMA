@@ -33,9 +33,13 @@ docker run -p 5000:5000 blender-converter
 | `RATE_LIMIT_WINDOW` | レートリミット対象の時間窓(秒) | `60` |
 | `CONVERSION_TIMEOUT` | 変換処理のタイムアウト(秒) | `300` |
 | `CACHE_DURATION` | 変換結果をキャッシュする時間(秒) | `3600` |
+| `APP_ENV` | アプリケーションの環境種別 (`local` など) | `development` |
 | `LOG_LEVEL` | ログ出力レベル | `INFO` |
 | `LOG_FORMAT` | `plain` または `json` 形式のログフォーマット | `plain` |
 | `LOG_FILE` | ログを出力するファイルパス(任意) | - |
+
+`APP_ENV` が `local` の場合、`app.convert.is_local_env()` ヘルパーは `True`
+を返します。ローカル環境向けの条件分岐に利用できます。
 
 ### ログ出力設定
 `LOG_LEVEL` と `LOG_FORMAT` を組み合わせることで、コンソールやファイルへ出力

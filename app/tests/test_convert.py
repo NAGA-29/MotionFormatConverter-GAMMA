@@ -7,7 +7,8 @@ import sys
 # Stub bpy to avoid ImportError during tests
 sys.modules.setdefault('bpy', Mock())
 
-from app.convert import app
+with patch.dict(os.environ, {"APP_ENV": "local"}):
+    from app.convert import app, is_local_env
 import time
 
 class TestFileConversion(unittest.TestCase):
@@ -276,7 +277,18 @@ class TestFileConversion(unittest.TestCase):
                             }
                             endpoint = f'/convert/{input_format}-to-{output_format}'
                             response = self.app.post(endpoint, data=data)
-                            self.assertIn(response.status_code, [200, 500])  # Either success or handled error
+        self.assertIn(response.status_code, [200, 500])  # Either success or handled error
+
+
+class TestIsLocalEnv(unittest.TestCase):
+    def test_is_local_env_true(self):
+        with patch.dict(os.environ, {"APP_ENV": "local"}):
+            self.assertTrue(is_local_env())
+
+    def test_is_local_env_false(self):
+        with patch.dict(os.environ, {"APP_ENV": "production"}):
+            self.assertFalse(is_local_env())
 
 if __name__ == '__main__':
     unittest.main()
+
