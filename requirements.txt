@@ -5,3 +5,4 @@ numpy
 urllib3
 redis
 flasgger
+flake8

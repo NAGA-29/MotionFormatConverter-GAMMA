@@ -28,6 +28,11 @@ logger.debug("convert module loaded")
 app = Flask(__name__)
 swagger = Swagger(app)
 
+# Environment helpers
+def is_local_env() -> bool:
+    """Return True if running in the local environment."""
+    return os.getenv("APP_ENV", "development") == "local"
+
 # Redis connection for rate limiting and caching
 redis_client = redis.Redis(
     host=os.getenv('REDIS_HOST', 'localhost'),
