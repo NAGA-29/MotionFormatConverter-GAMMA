@@ -3,14 +3,7 @@ import os
 import sys
 import tempfile
 import logging
-from app.utils.logger import AppLogger
-from flask import Flask, request, jsonify, send_file
-from flasgger import Swagger, swag_from
-import shutil
-from werkzeug.utils import secure_filename
-import mimetypes
 from functools import wraps
-import time
 from datetime import datetime, timedelta
 from collections import defaultdict
 import hashlib
@@ -20,6 +13,18 @@ import threading
 import traceback
 import io
 import gc
+import mimetypes
+import shutil
+import time
+
+from flask import Flask, request, jsonify, send_file
+from flasgger import Swagger, swag_from
+from werkzeug.utils import secure_filename
+
+from app.config import get_settings
+from app.utils.logger import AppLogger
+
+settings = get_settings()
 
 # Configure logging
 logger = AppLogger.get_logger(__name__)
@@ -28,15 +33,17 @@ logger.debug("convert module loaded")
 app = Flask(__name__)
 swagger = Swagger(app)
 
+
 # Environment helpers
 def is_local_env() -> bool:
     """Return True if running in the local environment."""
-    return os.getenv("APP_ENV", "development") == "local"
+    return settings.is_local()
+
 
 # Redis connection for rate limiting and caching
 redis_client = redis.Redis(
-    host=os.getenv('REDIS_HOST', 'localhost'),
-    port=int(os.getenv('REDIS_PORT', 6379)),
+    host=settings.redis_host,
+    port=int(settings.redis_port),
     db=0,
     decode_responses=True,
     socket_connect_timeout=5,
@@ -44,11 +51,11 @@ redis_client = redis.Redis(
 )
 
 # Configuration from environment variables
-MAX_FILE_SIZE = int(os.getenv('MAX_FILE_SIZE', 50 * 1024 * 1024))  # Default 50MB
-RATE_LIMIT_REQUESTS = int(os.getenv('RATE_LIMIT_REQUESTS', 10))
-RATE_LIMIT_WINDOW = int(os.getenv('RATE_LIMIT_WINDOW', 60))  # seconds
-CONVERSION_TIMEOUT = int(os.getenv('CONVERSION_TIMEOUT', 300))  # seconds
-CACHE_DURATION = int(os.getenv('CACHE_DURATION', 3600))  # 1 hour
+MAX_FILE_SIZE = settings.max_file_size
+RATE_LIMIT_REQUESTS = settings.rate_limit_requests
+RATE_LIMIT_WINDOW = settings.rate_limit_window
+CONVERSION_TIMEOUT = settings.conversion_timeout
+CACHE_DURATION = settings.cache_duration
 
 # Supported file formats and their MIME types
 SUPPORTED_FORMATS = {

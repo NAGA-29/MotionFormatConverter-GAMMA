@@ -1,13 +1,9 @@
-"""Application configuration placeholder."""
+"""Backwards-compatible import for configuration helpers.
 
-import os
+Prefer using :mod:`app.config.settings` and ``get_settings`` directly.
+This module remains to avoid breaking existing imports while the
+application is being modularized.
+"""
 
-from app.utils.logger import AppLogger
-from app.convert import is_local_env
-
-logger = AppLogger.get_logger(__name__)
-logger.debug("Loading configuration module")
-
-# Example of reading a configuration value
-logger.debug("IS_LOCAL=%s", is_local_env())
+from app.config.settings import AppSettings, get_settings  # noqa: F401
 
