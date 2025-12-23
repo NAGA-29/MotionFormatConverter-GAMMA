@@ -23,7 +23,10 @@ docker build -t blender-converter .
 docker run -p 5000:5000 blender-converter
 ```
 
-## 主要な環境変数
+## 設定と主要な環境変数
+`app.config.settings.AppSettings` により環境変数から設定値を読み込みます。
+`get_settings()` はプロセス内で一度だけ評価され、型付きで参照できます。
+
 | 変数 | 説明 | デフォルト |
 |------|------|------------|
 | `REDIS_HOST` | Redis サーバーのホスト名 | `redis` |
@@ -38,8 +41,8 @@ docker run -p 5000:5000 blender-converter
 | `LOG_FORMAT` | `plain` または `json` 形式のログフォーマット | `plain` |
 | `LOG_FILE` | ログを出力するファイルパス(任意) | - |
 
-`APP_ENV` が `local` の場合、`app.convert.is_local_env()` ヘルパーは `True`
-を返します。ローカル環境向けの条件分岐に利用できます。
+`APP_ENV` が `local` の場合、`is_local_env()` ヘルパーは `True` を返します。
+ローカル環境向けの条件分岐に利用できます。
 
 ### ログ出力設定
 `LOG_LEVEL` と `LOG_FORMAT` を組み合わせることで、コンソールやファイルへ出力
@@ -94,6 +97,15 @@ API ドキュメントを閲覧できます。
 Blender 付属の `bpy` モジュールが必要です。Docker 環境上で次のコマンドを実行します。
 ```bash
 PYTHONPATH=./app python -m unittest discover app/tests
+```
+
+ネットワーク制限で依存パッケージ（Flask 等）が取得できない環境では、一部テストが
+自動的にスキップされます。
+
+### Lint
+`ruff` を導入しています。
+```bash
+PYTHONPATH=./app ruff check .
 ```
 
 ## 各ファイル形式の仕様リンク
