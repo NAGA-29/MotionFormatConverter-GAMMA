@@ -65,10 +65,9 @@ mock_redis_client.get.return_value = None
 sys.modules['redis'] = mock_redis_client
 
 if flask:
-    from app.convert import app, is_local_env
+    from app.convert import app
 else:
     app = None
-    is_local_env = None
 import time
 
 @unittest.skipUnless(flask, "Flask is not installed in the test environment")
@@ -223,9 +222,11 @@ class TestFileConversion(unittest.TestCase):
             rate_limited = any(r.status_code == 429 for r in responses)
             self.assertTrue(rate_limited)
 
-    @patch('app.convert.convert_file_with_timeout', side_effect=TimeoutError("Operation timed out"))
+    @patch('app.convert.convert_file_with_timeout')
     def test_timeout_handling(self, mock_convert):
         # Mock a timeout during conversion
+        mock_convert.return_value = (False, "Conversion timed out")
+
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
             temp_file.write(b'data')
             temp_file.seek(0)
@@ -237,20 +238,27 @@ class TestFileConversion(unittest.TestCase):
             self.assertTrue('error' in response.json)
             self.assertEqual(response.json['error'], "Conversion timed out")
 
-    @patch('app.convert.handle_conversion')
-    def test_concurrent_requests(self, mock_handle_conversion):
+    def test_concurrent_requests(self):
         import threading
         import queue
         
-        # Mock the conversion handler to return a simple response
-        mock_handle_conversion.return_value = ('', 200)
-
         results = queue.Queue()
         def make_request():
-            with app.test_request_context():
-                # We can't share the same file across threads, so we don't send one
-                response = self.app.post('/convert/fbx-to-glb', data={})
-                results.put(response.status_code)
+            with patch('app.convert.redis_client') as mock_redis:
+                mock_pipeline = Mock()
+                # Simulate reaching the rate limit on the 11th request
+                mock_pipeline.execute.side_effect = [(None, i, None, None) for i in range(10)] + [(None, 10, None, None)] * 10
+                mock_redis.pipeline.return_value = mock_pipeline
+                mock_redis.get.return_value = None  # Ensure get is mocked
+                with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+                    temp_file.write(b'data')
+                    temp_file.seek(0)
+                    data = {
+                        'file': (temp_file, 'test.fbx')
+                    }
+                    with app.test_request_context():
+                        response = self.app.post('/convert/fbx-to-glb', data=data, content_type='multipart/form-data')
+                        results.put(response.status_code)
 
         # Create multiple threads to simulate concurrent requests
         threads = []
@@ -307,7 +315,7 @@ class TestFileConversion(unittest.TestCase):
                             }
                             endpoint = f'/convert/{input_format}-to-{output_format}'
                             response = self.app.post(endpoint, data=data, content_type='multipart/form-data')
-        self.assertIn(response.status_code, [200, 500])  # Either success or handled error
+                            self.assertIn(response.status_code, [200, 500])  # Either success or handled error
 
     def test_bvh_conversion_no_animation(self):
         # No animation data in mock_bpy.data.actions, so this should fail
