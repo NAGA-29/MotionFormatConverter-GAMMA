@@ -129,6 +129,10 @@ PYTHONPATH=./app ruff check .
   - フォーマット: [VRM Specification](https://vrm.dev/en/docs/vrm/vrm_spec/)
   - パーサー: [Blender VRM Addon](app/addons/vrm_addon.py)
 
+- **BVH**
+  - フォーマット: [BioVision BVH](https://research.cs.wisc.edu/graphics/Courses/cs-838-1999/Jeff/BVH.html)
+  - パーサー: Blender 内蔵
+
 ---
 ## TODO リスト (将来実装予定)
 
