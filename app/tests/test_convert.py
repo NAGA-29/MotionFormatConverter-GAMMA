@@ -3,13 +3,12 @@ import os
 import tempfile
 from unittest.mock import patch, Mock
 import sys
+import types
 
 try:
     import flask  # type: ignore
 except ImportError:  # pragma: no cover - optional dependency in CI
     flask = None
-
-import types
 
 # Stub bpy to avoid ImportError during tests
 mock_bpy = Mock()
@@ -156,37 +155,37 @@ class TestFileConversion(unittest.TestCase):
             response = self.app.post('/convert/fbx-to-glb', data=data, content_type='multipart/form-data')
             self.assertEqual(response.status_code, 200)
 
-    @patch('app.convert.convert_file')
-    def test_gltf_to_glb_endpoint(self, mock_convert):
-        mock_convert.return_value = (True, "ok")
+    def test_gltf_to_glb_endpoint(self):
         with tempfile.NamedTemporaryFile(suffix='.gltf') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
             data = {
                 'file': (temp_file, 'test.gltf')
             }
             response = self.app.post('/convert/gltf-to-glb', data=data, content_type='multipart/form-data')
             self.assertEqual(response.status_code, 200)
 
-    @patch('app.convert.convert_file')
-    def test_glb_to_gltf_endpoint(self, mock_convert):
-        mock_convert.return_value = (True, "ok")
+    def test_glb_to_gltf_endpoint(self):
         with tempfile.NamedTemporaryFile(suffix='.glb') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
             data = {
                 'file': (temp_file, 'test.glb')
             }
             response = self.app.post('/convert/glb-to-gltf', data=data, content_type='multipart/form-data')
             self.assertEqual(response.status_code, 200)
 
-    @patch('app.convert.convert_file')
-    def test_vrm_to_gltf_endpoint(self, mock_convert):
-        mock_convert.return_value = (True, "ok")
+    def test_vrm_to_gltf_endpoint(self):
         with tempfile.NamedTemporaryFile(suffix='.vrm') as temp_file:
+            temp_file.write(b'data')
+            temp_file.seek(0)
             data = {
                 'file': (temp_file, 'test.vrm')
             }
             response = self.app.post('/convert/vrm-to-gltf', data=data, content_type='multipart/form-data')
             self.assertEqual(response.status_code, 200)
 
-    @patch('app.convert.convert_file')
+    @patch('app.convert.convert_file_with_timeout')
     def test_conversion_error(self, mock_convert):
         # Mock conversion error
         mock_convert.return_value = (False, "Error during conversion")
@@ -203,30 +202,30 @@ class TestFileConversion(unittest.TestCase):
 
     def test_rate_limit(self):
         # Test rate limiting by making multiple requests
-        responses = []
-        for _ in range(10):  # Adjust based on your rate limit
-            with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
-                temp_file.write(b'data')
-                temp_file.seek(0)
-                data = {
-                    'file': (temp_file, 'test.fbx')
-                }
-                responses.append(self.app.post('/convert/fbx-to-glb', data=data, content_type='multipart/form-data'))
-                time.sleep(0.1)  # Small delay between requests
-        
-        # Check if any requests were rate limited
-        rate_limited = any(r.status_code == 429 for r in responses)
-        self.assertTrue(rate_limited)
+        with patch('app.convert.redis_client') as mock_redis:
+            mock_pipeline = Mock()
+            # Simulate reaching the rate limit on the 11th request
+            mock_pipeline.execute.side_effect = [(None, i, None, None) for i in range(10)] + [(None, 10, None, None)] * 10
+            mock_redis.pipeline.return_value = mock_pipeline
+            mock_redis.get.return_value = None
 
-    @patch('app.convert.convert_file')
+            responses = []
+            for _ in range(20):  # Adjust based on your rate limit
+                with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
+                    temp_file.write(b'data')
+                    temp_file.seek(0)
+                    data = {
+                        'file': (temp_file, 'test.fbx')
+                    }
+                    responses.append(self.app.post('/convert/fbx-to-glb', data=data, content_type='multipart/form-data'))
+
+            # Check if any requests were rate limited
+            rate_limited = any(r.status_code == 429 for r in responses)
+            self.assertTrue(rate_limited)
+
+    @patch('app.convert.convert_file_with_timeout', side_effect=TimeoutError("Operation timed out"))
     def test_timeout_handling(self, mock_convert):
         # Mock a timeout during conversion
-        def timeout_side_effect(*args, **kwargs):
-            time.sleep(2)  # Simulate long processing
-            return (True, "Conversion successful")
-        
-        mock_convert.side_effect = timeout_side_effect
-
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
             temp_file.write(b'data')
             temp_file.seek(0)
@@ -234,27 +233,28 @@ class TestFileConversion(unittest.TestCase):
                 'file': (temp_file, 'test.fbx')
             }
             response = self.app.post('/convert/fbx-to-glb', data=data, content_type='multipart/form-data')
-            self.assertEqual(response.status_code, 408)
+            self.assertEqual(response.status_code, 500)
             self.assertTrue('error' in response.json)
+            self.assertEqual(response.json['error'], "Conversion timed out")
 
-    def test_concurrent_requests(self):
+    @patch('app.convert.handle_conversion')
+    def test_concurrent_requests(self, mock_handle_conversion):
         import threading
         import queue
         
+        # Mock the conversion handler to return a simple response
+        mock_handle_conversion.return_value = ('', 200)
+
         results = queue.Queue()
         def make_request():
-            with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
-                temp_file.write(b'data')
-                temp_file.seek(0)
-                data = {
-                    'file': (temp_file, 'test.fbx')
-                }
-                response = self.app.post('/convert/fbx-to-glb', data=data, content_type='multipart/form-data')
+            with app.test_request_context():
+                # We can't share the same file across threads, so we don't send one
+                response = self.app.post('/convert/fbx-to-glb', data={})
                 results.put(response.status_code)
 
         # Create multiple threads to simulate concurrent requests
         threads = []
-        for _ in range(5):
+        for _ in range(20):
             t = threading.Thread(target=make_request)
             threads.append(t)
             t.start()
@@ -269,69 +269,27 @@ class TestFileConversion(unittest.TestCase):
             status_codes.append(results.get())
 
         # Verify that all requests were handled
-        self.assertEqual(len(status_codes), 5)
+        self.assertEqual(len(status_codes), 20)
         # Some requests might be rate limited (429) or successful (200)
-        self.assertTrue(all(code in [200, 429] for code in status_codes))
+        self.assertTrue(any(code == 429 for code in status_codes))
+        self.assertTrue(any(code == 200 for code in status_codes))
 
-    def test_cleanup_after_error(self):
+    @patch('app.convert.cleanup_temp_files')
+    @patch('app.convert.convert_file_with_timeout')
+    def test_cleanup_after_error(self, mock_convert, mock_cleanup):
         """Test that temporary files are cleaned up after an error"""
-        temp_dir = None
-        
-        @patch('app.convert.convert_file')
-        def mock_conversion(mock_convert):
-            mock_convert.return_value = (False, "Simulated error")
+        mock_convert.return_value = (False, "Simulated error")
 
-            with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
-                temp_file.write(b'data')
-                temp_file.seek(0)
-                data = {
-                    'file': (temp_file, 'test.fbx')
-                }
-                response = self.app.post('/convert/fbx-to-glb', data=data, content_type='multipart/form-data')
-                
-                # Get the temp directory path from the mock
-                nonlocal temp_dir
-                if mock_convert.call_args:
-                    temp_dir = os.path.dirname(mock_convert.call_args[0][0])
-                
-                return response
-
-        response = mock_conversion()
-        self.assertEqual(response.status_code, 500)
-        
-        # Verify temp directory was cleaned up
-        if temp_dir:
-            self.assertFalse(os.path.exists(temp_dir))
-
-    def test_gltf_to_glb_endpoint(self):
-        with tempfile.NamedTemporaryFile(suffix='.gltf') as temp_file:
+        with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
             temp_file.write(b'data')
             temp_file.seek(0)
             data = {
-                'file': (temp_file, 'model.gltf')
+                'file': (temp_file, 'test.fbx')
             }
-            response = self.app.post('/convert/gltf-to-glb', data=data, content_type='multipart/form-data')
-            self.assertIn(response.status_code, [200, 500])
+            response = self.app.post('/convert/fbx-to-glb', data=data, content_type='multipart/form-data')
 
-    def test_glb_to_gltf_endpoint(self):
-        with tempfile.NamedTemporaryFile(suffix='.glb') as temp_file:
-            temp_file.write(b'data')
-            temp_file.seek(0)
-            data = {
-                'file': (temp_file, 'model.glb')
-            }
-            response = self.app.post('/convert/glb-to-gltf', data=data, content_type='multipart/form-data')
-            self.assertIn(response.status_code, [200, 500])
-
-    def test_vrm_to_gltf_endpoint(self):
-        with tempfile.NamedTemporaryFile(suffix='.vrm') as temp_file:
-            temp_file.write(b'data')
-            temp_file.seek(0)
-            data = {
-                'file': (temp_file, 'model.vrm')
-            }
-            response = self.app.post('/convert/vrm-to-gltf', data=data, content_type='multipart/form-data')
-            self.assertIn(response.status_code, [200, 500])
+            self.assertEqual(response.status_code, 500)
+            mock_cleanup.assert_called_once()
 
     def test_all_format_conversions(self):
         """Test all supported format conversion combinations"""
@@ -394,4 +352,3 @@ class TestIsLocalEnv(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

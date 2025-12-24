@@ -15,7 +15,7 @@ docker compose build
 # コンテナを起動
 docker compose up
 ```
-起動後は `http://localhost:5000` で API が利用できます。
+起動後は `http://localhost:5000/` で API が利用できます。
 
 ### 単体での Docker 実行例
 ```bash
