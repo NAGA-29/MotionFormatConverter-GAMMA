@@ -1,10 +1,10 @@
 import os
 import unittest
 from importlib import reload
-from unittest import mock
+from unittest import TestCase, mock
 
 
-class TestSettings(unittest.TestCase):
+class TestSettings(TestCase):
     def test_settings_defaults_use_env(self):
         with mock.patch.dict(os.environ, {
             "REDIS_HOST": "example",
