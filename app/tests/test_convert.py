@@ -282,6 +282,18 @@ class TestFileConversion(unittest.TestCase):
         self.assertTrue(any(code == 429 for code in status_codes))
         self.assertTrue(any(code == 200 for code in status_codes))
 
+    def test_conversion_doc(self):
+        from app.convert import conversion_doc
+        doc = conversion_doc('fbx', 'glb')
+        self.assertEqual(doc['tags'], ['conversion'])
+        self.assertEqual(doc['consumes'], ['multipart/form-data'])
+        self.assertEqual(doc['parameters'][0]['name'], 'file')
+        self.assertEqual(doc['parameters'][0]['in'], 'formData')
+        self.assertEqual(doc['parameters'][0]['type'], 'file')
+        self.assertTrue(doc['parameters'][0]['required'])
+        self.assertEqual(doc['parameters'][0]['description'], 'Input FBX file')
+        self.assertEqual(doc['responses'][200]['description'], 'Converted GLB file')
+
     @patch('app.convert.cleanup_temp_files')
     @patch('app.convert.convert_file_with_timeout')
     def test_cleanup_after_error(self, mock_convert, mock_cleanup):

@@ -5,5 +5,3 @@ This module remains to avoid breaking existing imports while the
 application is being modularized.
 """
 
-from app.config.settings import AppSettings, get_settings  # noqa: F401
-
