@@ -4,3 +4,6 @@
 .env
 # Ignore GLB files
 *.glb
+
+# No Cache files
+*.pyc
