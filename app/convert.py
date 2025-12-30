@@ -537,12 +537,8 @@ def handle_conversion(request, input_format, output_format):
             status_code = 413 if too_large else 400
             return jsonify({"error": error}), status_code
         
-        # Create output directory if it doesn't exist
-        output_dir = '/app/output'
-        os.makedirs(output_dir, exist_ok=True)
-        
         # Create temporary directory with a unique name
-        temp_dir = tempfile.mkdtemp(prefix='convert_', dir='/tmp/convert')
+        temp_dir = tempfile.mkdtemp(prefix='convert_')
         logger.info(f"Created temporary directory: {temp_dir}")
         
         # Save input file with secure filename
@@ -564,10 +560,9 @@ def handle_conversion(request, input_format, output_format):
                 mimetype=SUPPORTED_FORMATS[output_format][0]
             )
         
-        # Set output path in the mounted output directory
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_filename = secure_filename(f"{timestamp}_converted.{output_format}")
-        output_path = os.path.join(output_dir, output_filename)
+        # Set output path in the temporary directory
+        output_filename = secure_filename(f"converted.{output_format}")
+        output_path = os.path.join(temp_dir, output_filename)
         logger.info(f"Will save converted file to: {output_path}")
         
         # Clear Blender scene before conversion
