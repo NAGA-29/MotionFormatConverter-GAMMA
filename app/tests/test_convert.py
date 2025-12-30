@@ -143,10 +143,14 @@ class TestFileConversion(unittest.TestCase):
             self.assertEqual(response.status_code, 500)
             self.assertTrue('error' in response.json)
 
-    @patch('app.convert.convert_file')
+    @patch('app.convert.convert_file_with_timeout')
     def test_successful_conversion(self, mock_convert):
         # Mock successful conversion
-        mock_convert.return_value = (True, "Conversion successful")
+        def side_effect(input_path, output_path, input_format, output_format):
+            with open(output_path, "w") as f:
+                f.write("mock data")
+            return (True, "Conversion successful")
+        mock_convert.side_effect = side_effect
         
         # Create a temporary FBX file
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
@@ -294,30 +298,23 @@ class TestFileConversion(unittest.TestCase):
         self.assertEqual(doc['parameters'][0]['description'], 'Input FBX file')
         self.assertEqual(doc['responses'][200]['description'], 'Converted GLB file')
 
-    @patch('app.convert.cleanup_temp_files')
     @patch('app.convert.convert_file_with_timeout')
-    def test_cleanup_after_error(self, mock_convert, mock_cleanup):
+    def test_cleanup_after_error(self, mock_convert):
         """Test that temporary files are cleaned up after an error"""
         mock_convert.return_value = (False, "Simulated error")
-        temp_dir = None
 
+        temp_dir = tempfile.mkdtemp()
         with tempfile.NamedTemporaryFile(suffix='.fbx') as temp_file:
             temp_file.write(b'data')
             temp_file.seek(0)
             data = {
                 'file': (temp_file, 'test.fbx')
             }
-            response = self.app.post('/convert?output_format=glb', data=data, content_type='multipart/form-data')
-            
-            # Get the temp directory path from the mock
-            if mock_convert.call_args:
-                temp_dir = os.path.dirname(mock_convert.call_args[0][0])
-
-        self.assertEqual(response.status_code, 500)
+            with patch('tempfile.mkdtemp', return_value=temp_dir):
+                response = self.app.post('/convert?output_format=glb', data=data, content_type='multipart/form-data')
         
-        # Verify temp directory was cleaned up
-        if temp_dir:
-            self.assertFalse(os.path.exists(temp_dir))
+        self.assertEqual(response.status_code, 500)
+        self.assertFalse(os.path.exists(temp_dir))
 
     def test_gltf_to_glb_endpoint(self):
         with tempfile.NamedTemporaryFile(suffix='.gltf') as temp_file:
