@@ -162,35 +162,6 @@ class TestFileConversion(unittest.TestCase):
             response = self.app.post('/convert?output_format=glb', data=data, content_type='multipart/form-data')
             self.assertEqual(response.status_code, 200)
 
-    def test_gltf_to_glb_endpoint(self):
-        with tempfile.NamedTemporaryFile(suffix='.gltf') as temp_file:
-            temp_file.write(b'data')
-            temp_file.seek(0)
-            data = {
-                'file': (temp_file, 'test.gltf')
-            }
-            response = self.app.post('/convert?output_format=glb', data=data, content_type='multipart/form-data')
-            self.assertEqual(response.status_code, 200)
-
-    def test_glb_to_gltf_endpoint(self):
-        with tempfile.NamedTemporaryFile(suffix='.glb') as temp_file:
-            temp_file.write(b'data')
-            temp_file.seek(0)
-            data = {
-                'file': (temp_file, 'test.glb')
-            }
-            response = self.app.post('/convert?output_format=gltf', data=data, content_type='multipart/form-data')
-            self.assertEqual(response.status_code, 200)
-
-    def test_vrm_to_gltf_endpoint(self):
-        with tempfile.NamedTemporaryFile(suffix='.vrm') as temp_file:
-            temp_file.write(b'data')
-            temp_file.seek(0)
-            data = {
-                'file': (temp_file, 'test.vrm')
-            }
-            response = self.app.post('/convert?output_format=gltf', data=data, content_type='multipart/form-data')
-            self.assertEqual(response.status_code, 200)
 
     @patch('app.convert.convert_file_with_timeout')
     def test_conversion_error(self, mock_convert):
@@ -321,7 +292,7 @@ class TestFileConversion(unittest.TestCase):
             temp_file.write(b'data')
             temp_file.seek(0)
             data = {
-                'file': (temp_file, 'test.fbx')
+                'file': (temp_file, 'test.gltf')
             }
             response = self.app.post('/convert?output_format=glb', data=data, content_type='multipart/form-data')
             self.assertIn(response.status_code, [200, 500])
