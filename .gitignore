@@ -5,5 +5,9 @@
 # Ignore GLB files
 *.glb
 
-# No Cache files
-*.pyc
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
