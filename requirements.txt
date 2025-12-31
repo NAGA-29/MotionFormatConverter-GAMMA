@@ -7,3 +7,4 @@ redis
 flasgger
 flake8
 ruff
+structlog
