@@ -55,37 +55,31 @@ LOG_LEVEL=DEBUG LOG_FORMAT=json LOG_FILE=/var/log/blender-api.log \
 docker compose up
 ```
 
-## 変換エンドポイント一覧と使用例
-以下はいずれも `POST` でファイルを送信します。変換後のファイルがレスポンスとして返されます。
+## 変換エンドポイントと使用例
 
-- `/convert/fbx-to-glb`
-- `/convert/fbx-to-obj`
-- `/convert/fbx-to-gltf`
-- `/convert/fbx-to-vrm`
-- `/convert/vrm-to-glb`
-- `/convert/vrm-to-fbx`
-- `/convert/vrm-to-obj`
-- `/convert/vrm-to-gltf`
-- `/convert/gltf-to-obj`
-- `/convert/gltf-to-fbx`
-- `/convert/gltf-to-vrm`
-- `/convert/gltf-to-glb`
-- `/convert/glb-to-gltf`
-- `/convert/vrm-to-gltf`
-- `/convert/glb-to-obj`
-- `/convert/glb-to-fbx`
-- `/convert/glb-to-vrm`
-- `/convert/glb-to-gltf`
-- `/convert/obj-to-glb`
-- `/convert/obj-to-fbx`
-- `/convert/obj-to-gltf`
-- `/convert/obj-to-vrm`
+### POST /convert
 
-使用例:
+`POST` メソッドでファイルを送信し、変換後のファイルがレスポンスとして返されます。
+
+**クエリパラメータ**
+
+| パラメータ | 型 | 説明 | 必須 |
+|---|---|---|---|
+| `output_format` | string | 出力したいファイル形式 (例: `glb`, `fbx`, `obj`) | はい |
+
+**リクエストボディ**
+
+- `multipart/form-data`
+- `file`: 変換したい 3D モデルファイル
+
+**使用例**
+
+`model.fbx` を `glb` 形式に変換する場合:
+
 ```bash
-    curl -F "file=@model.fbx" \
-         http://localhost:5000/convert/fbx-to-glb \
-         --output model.glb
+curl -F "file=@model.fbx" \
+     "http://localhost:5000/convert?output_format=glb" \
+     --output model.glb
 ```
 
 ## Swagger UI
