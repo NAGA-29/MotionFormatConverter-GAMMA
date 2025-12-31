@@ -123,6 +123,10 @@ PYTHONPATH=./app ruff check .
   - フォーマット: [VRM Specification](https://vrm.dev/en/docs/vrm/vrm_spec/)
   - パーサー: [Blender VRM Addon](app/addons/vrm_addon.py)
 
+- **BVH**  
+  - フォーマット: [BVH File Format](https://research.cs.wisc.edu/graphics/Courses/cs-838-1999/Jeff/BVH.html)
+  - パーサー: [bvh-python]
+  - 資料: [東京都立大学 Mukai Laboratory の資料](https://mukai-lab.org/content/MotionCaptureDataFile.pdf)
 ---
 ## TODO リスト (将来実装予定)
 
