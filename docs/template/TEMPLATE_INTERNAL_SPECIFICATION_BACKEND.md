@@ -533,7 +533,7 @@ flowchart TD
 - [ ] 運用セクションに `TEMPLATE_OPERATION.md` ベースのRunbook参照とバックエンド固有事項を記載
 - [ ] 改善計画の記入完了
 - [ ] 影響のあるADRを `docs/adr/` に作成または更新済み
-- [ ] `template/architecture.md` の更新が必要か確認し反映済み
+- [ ] `template/Architecture.md` の更新が必要か確認し反映済み
 
 ## 📤 ファイル分割ガイド
 
