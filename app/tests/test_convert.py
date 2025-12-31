@@ -287,35 +287,6 @@ class TestFileConversion(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertFalse(os.path.exists(temp_dir))
 
-    def test_gltf_to_glb_endpoint(self):
-        with tempfile.NamedTemporaryFile(suffix='.gltf') as temp_file:
-            temp_file.write(b'data')
-            temp_file.seek(0)
-            data = {
-                'file': (temp_file, 'test.gltf')
-            }
-            response = self.app.post('/convert?output_format=glb', data=data, content_type='multipart/form-data')
-            self.assertIn(response.status_code, [200, 500])
-
-    def test_glb_to_gltf_endpoint(self):
-        with tempfile.NamedTemporaryFile(suffix='.glb') as temp_file:
-            temp_file.write(b'data')
-            temp_file.seek(0)
-            data = {
-                'file': (temp_file, 'model.glb')
-            }
-            response = self.app.post('/convert?output_format=gltf', data=data, content_type='multipart/form-data')
-            self.assertIn(response.status_code, [200, 500])
-
-    def test_vrm_to_gltf_endpoint(self):
-        with tempfile.NamedTemporaryFile(suffix='.vrm') as temp_file:
-            temp_file.write(b'data')
-            temp_file.seek(0)
-            data = {
-                'file': (temp_file, 'model.vrm')
-            }
-            response = self.app.post('/convert?output_format=gltf', data=data, content_type='multipart/form-data')
-            self.assertIn(response.status_code, [200, 500])
 
     def test_all_format_conversions(self):
         """Test all supported format conversion combinations"""
