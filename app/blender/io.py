@@ -11,7 +11,18 @@ logger = AppLogger.get_logger(__name__)
 
 
 def import_file(input_path: str, file_format: str) -> Tuple[bool, Optional[str]]:
-    """指定された形式に応じてBlenderへインポートし、(成功可否, メッセージ)を返す。"""
+    """
+    指定された形式に応じてBlenderへインポートし、(成功可否, メッセージ)を返す。
+
+    Args:
+        input_path (str): インポート対象ファイルのパス。
+        file_format (str): インポートするファイル形式。
+            サポートされている値は "fbx", "obj", "gltf", "glb", "vrm", "bvh"。
+            それ以外の値が指定された場合は未対応形式として失敗を返す。
+
+    Returns:
+        Tuple[bool, Optional[str]]: (処理が成功したかどうか, エラーメッセージまたはNone)。
+    """
     try:
         logger.info(f"Importing {file_format} file: {input_path}")
 
