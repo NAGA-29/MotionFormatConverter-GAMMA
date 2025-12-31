@@ -2,6 +2,7 @@ import gc
 import os
 
 import bpy
+from typing import Optional, Tuple
 
 from app.utils.logger import AppLogger
 from app.blender.setup import setup_vrm_addon
@@ -9,7 +10,7 @@ from app.blender.setup import setup_vrm_addon
 logger = AppLogger.get_logger(__name__)
 
 
-def import_file(input_path, file_format):
+def import_file(input_path: str, file_format: str) -> Tuple[bool, Optional[str]]:
     """指定された形式に応じてBlenderへインポートし、(成功可否, メッセージ)を返す。"""
     try:
         logger.info(f"Importing {file_format} file: {input_path}")
@@ -54,7 +55,7 @@ def import_file(input_path, file_format):
         return False, f"Error importing file: {exc}"
 
 
-def export_file(output_path, file_format):
+def export_file(output_path: str, file_format: str) -> Tuple[bool, Optional[str]]:
     """現在のシーンを指定フォーマットでエクスポートし、(成功可否, メッセージ)を返す。"""
     try:
         logger.info(f"Exporting to {file_format}: {output_path}")

@@ -3,23 +3,22 @@ import io
 import mimetypes
 import os
 import shutil
-import signal
 import sys
 import tempfile
-import time
 import traceback
-from typing import Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout
 
 import bpy
 
 from flask import jsonify, send_file
 from werkzeug.utils import secure_filename
 
-from app.blender import clear_scene, handle_blender_error, import_file, setup_addons
-from app.blender.io import export_file
+from app.blender import clear_scene, handle_blender_error, import_file, setup_addons, export_file
 from app.utils.logger import AppLogger
 
 logger = AppLogger.get_logger(__name__)
+PERSISTENT_CACHE_DIR = os.getenv("CONVERSION_CACHE_DIR", "/tmp/convert_cache")
 
 SUPPORTED_FORMATS: Dict[str, list] = {
     "fbx": ["application/octet-stream", "application/x-autodesk-fbx"],
@@ -31,7 +30,7 @@ SUPPORTED_FORMATS: Dict[str, list] = {
 }
 
 
-def conversion_doc(input_format: str, output_format: str) -> dict:
+def conversion_doc(input_format: str, output_format: str) -> Dict[str, Any]:
     """Swagger用の基本的な辞書を生成する。"""
     return {
         "tags": ["conversion"],
@@ -54,7 +53,7 @@ def conversion_doc(input_format: str, output_format: str) -> dict:
     }
 
 
-def validate_file_format(file, format: str):
+def validate_file_format(file, format: str) -> Tuple[bool, Optional[str]]:
     """拡張子とMIMEタイプを検証する。"""
     if not file.filename.lower().endswith(f".{format}"):
         return False, f"File must have .{format} extension"
@@ -67,7 +66,7 @@ def validate_file_format(file, format: str):
     return True, None
 
 
-def validate_file_size(file, max_file_size: int):
+def validate_file_size(file, max_file_size: int) -> Tuple[bool, Optional[str], bool]:
     """設定上限に対してファイルサイズを検証する。"""
     file.seek(0, os.SEEK_END)
     size = file.tell()
@@ -94,7 +93,7 @@ def calculate_file_hash(file_path: str) -> str:
     return sha256_hash.hexdigest()
 
 
-def get_cached_conversion(redis_client, input_path: str, output_format: str):
+def get_cached_conversion(redis_client, input_path: str, output_format: str) -> Optional[str]:
     """キャッシュ済みの変換結果を取得する。"""
     try:
         file_hash = calculate_file_hash(input_path)
@@ -112,19 +111,23 @@ def get_cached_conversion(redis_client, input_path: str, output_format: str):
 
 def cache_conversion_result(
     redis_client, input_path: str, output_path: str, output_format: str, cache_duration: int
-):
+) -> None:
     """成功した変換結果をキャッシュする。"""
     try:
         file_hash = calculate_file_hash(input_path)
         cache_key = f"conversion:{file_hash}:{output_format}"
 
-        redis_client.setex(cache_key, cache_duration, output_path)
+        os.makedirs(PERSISTENT_CACHE_DIR, exist_ok=True)
+        cached_copy_path = os.path.join(PERSISTENT_CACHE_DIR, f"{file_hash}.{output_format}")
+        shutil.copy2(output_path, cached_copy_path)
+
+        redis_client.setex(cache_key, cache_duration, cached_copy_path)
 
     except Exception as exc:
         logger.error(f"Error caching result: {exc}")
 
 
-def cleanup_temp_files(temp_dir: str):
+def cleanup_temp_files(temp_dir: str) -> bool:
     """一時ディレクトリを削除してクリーンアップする。"""
     try:
         if os.path.exists(temp_dir):
@@ -244,20 +247,14 @@ def convert_file(
 
 
 def run_conversion_with_timeout(convert_func: Callable, timeout_seconds: int) -> Tuple[bool, str]:
-    """指定した変換関数をタイムアウト付きで実行する。"""
-    def timeout_handler(signum, frame):
-        raise TimeoutError("Operation timed out")
-
-    signal.signal(signal.SIGALRM, timeout_handler)
-    signal.alarm(timeout_seconds)
-    try:
-        result = convert_func()
-        signal.alarm(0)
-        return result
-    except TimeoutError:
-        return False, "Conversion timed out"
-    finally:
-        signal.alarm(0)
+    """指定した変換関数をタイムアウト付きで実行する（スレッド実行でクロスプラットフォーム対応）。"""
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(convert_func)
+        try:
+            return future.result(timeout=timeout_seconds)
+        except FuturesTimeout:
+            future.cancel()
+            return False, "Conversion timed out"
 
 
 def process_conversion(
