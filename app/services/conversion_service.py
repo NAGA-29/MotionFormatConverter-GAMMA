@@ -124,7 +124,16 @@ def get_cached_conversion(redis_client, input_path: str, output_format: str) -> 
 def cache_conversion_result(
     redis_client, input_path: str, output_path: str, output_format: str, cache_duration: int
 ) -> None:
-    """成功した変換結果をキャッシュする。"""
+    """成功した変換結果をキャッシュする。
+
+    Args:
+        redis_client: 変換結果のパスを保存するための Redis クライアントインスタンス。
+            `setex(key, seconds, value)` メソッドをサポートしている必要がある。
+        input_path (str): 入力ファイルのパス。キャッシュキー生成のためにハッシュ計算に使用する。
+        output_path (str): 変換後ファイルのパス。永続キャッシュディレクトリへコピーされる。
+        output_format (str): 変換後ファイルのフォーマット（例: "fbx", "gltf" など）。
+        cache_duration (int): キャッシュの有効期限（TTL）を秒単位で指定する。
+    """
     try:
         file_hash = calculate_file_hash(input_path)
         cache_key = f"conversion:{file_hash}:{output_format}"
