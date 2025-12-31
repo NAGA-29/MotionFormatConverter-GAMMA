@@ -82,6 +82,40 @@ curl -F "file=@model.fbx" \
      --output model.glb
 ```
 
+## クイックスタート（開発者向け）
+- 依存: Docker / Docker Compose、ポート `5000`、ローカルのディスク空き（キャッシュ用 `/tmp/convert_cache` 既定）
+- 起動: `docker compose up --build`
+- 動作確認: `curl -F "file=@example.fbx" "http://localhost:5000/convert?output_format=glb" -o example.glb`
+- ドキュメント: `http://localhost:5000/apidocs`（Swagger UI）
+- ヘルスチェック: `GET /health`（Redis疎通を含む）
+
+## API 詳細（実装サマリ）
+- エンドポイント: `POST /convert`
+  - 入力: `multipart/form-data` の `file`。入力形式は拡張子で判定。
+  - クエリ: `output_format`（`fbx|obj|gltf|glb|vrm|bvh`）
+  - レスポンス: 変換済みファイル（Content-Type は出力形式に対応）
+- レート制限: Redis ベース、`RATE_LIMIT_REQUESTS` 回 / `RATE_LIMIT_WINDOW` 秒（IPキー）
+- キャッシュ: 入力ハッシュ + 出力形式をキーに Redis へ永続キャッシュパスを保存。変換結果は `/tmp/convert_cache`（環境変数 `CONVERSION_CACHE_DIR` で変更可）へコピーし再利用。
+- 対応フォーマット補足:
+  - BVH 出力はシーンにアニメーション（`bpy.data.actions`）が必要。無い場合は 500 を返す。
+  - VRM は GLTF アドオンを先に有効化して VRM アドオンを登録してから処理。
+
+## 運用ノート
+- 依存サービス: Redis が必須（レート制限とキャッシュ）。未接続時はレート制限をスキップするが性能劣化に注意。
+- タイムアウト: `CONVERSION_TIMEOUT` 秒で変換処理を打ち切り（スレッドタイムアウト方式、クロスプラットフォーム）。
+- ログ: `LOG_LEVEL` / `LOG_FORMAT`（plain/json）/ `LOG_FILE` で制御。`LOG_FILE` を指定するとローテーション付きファイル出力。
+- 永続キャッシュ: `/tmp/convert_cache` に変換結果をコピーしてパスを Redis に保存。ディスク容量とクリーンアップは運用で管理してください。
+- 拡張: 環境変数は表の通り。`APP_ENV=local` でローカル向け挙動に切り替わり、テスト時はモックが利用されます。
+
+## 制約 / FAQ
+- Blender 依存: 変換は Blender のアドオン/オペレーターを使用。Blenderの対応フォーマット以外は非対応。
+- 同期実行: `/convert` は同期で処理するため大きなファイルではリクエスト待ちが発生。ジョブキュー化は未実装。
+- Windows: SIGALRM 非使用だが、Blender バイナリ依存のため Windows 動作は未検証。
+- BVH の注意: アニメーションが無いとエクスポート失敗。VRM はアドオン必須。
+- キャッシュ無効化: 今は未実装。手動で `/tmp/convert_cache` と Redis キー `conversion:*` を削除してください。
+
+詳細な手順や[運用ガイド](docs/manual/manual.md)を参照してください。
+
 ## Swagger UI
 flasgger により Swagger ドキュメントが自動生成されます。
 コンテナ起動後は `http://localhost:5000/apidocs` で
