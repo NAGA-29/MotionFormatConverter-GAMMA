@@ -1,7 +1,7 @@
 import gc
-import os
 import sys
 import traceback
+from typing import Optional, Tuple
 
 import bpy
 
@@ -21,12 +21,13 @@ def handle_blender_error(error_type, value, tb):
     try:
         bpy.ops.wm.read_factory_settings(use_empty=True)
     except Exception:
+        # If the reset itself fails, continue to surface the original exception.
         pass
 
     raise value
 
 
-def clear_scene():
+def clear_scene() -> Tuple[bool, Optional[str]]:
     """Blenderシーンを初期化し、オブジェクト/データブロックを削除してGCを実行する。(成功可否, メッセージ)を返す。"""
     try:
         bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -56,7 +57,7 @@ def clear_scene():
         return False, f"Error clearing scene: {exc}"
 
 
-def setup_vrm_addon():
+def setup_vrm_addon() -> Tuple[bool, Optional[str]]:
     """VRMアドオンのパスを追加し、GLTFを先に有効化してVRMを登録する。(成功可否, メッセージ)を返す。"""
     try:
         addon_paths = [
@@ -88,7 +89,7 @@ def setup_vrm_addon():
         return False, f"Error setting up VRM addon: {exc}"
 
 
-def setup_addons():
+def setup_addons() -> Tuple[bool, Optional[str]]:
     """必須アドオン（FBX, glTF）が有効か確認し、足りなければ有効化する。(成功可否, メッセージ)を返す。"""
     try:
         logger.info("Setting up required addons...")
@@ -109,7 +110,7 @@ def setup_addons():
         return False, f"Error setting up addons: {exc}"
 
 
-def initialize_blender():
+def initialize_blender() -> Tuple[bool, Optional[str]]:
     """ヘッドレス変換向けにBlenderを初期化する。エラーフック設定、アドオン有効化、シーン/データクリア、レンダー設定調整、VRM登録解除を行い、(成功可否, メッセージ)を返す。"""
     try:
         sys.excepthook = handle_blender_error
@@ -142,6 +143,7 @@ def initialize_blender():
 
             io_scene_vrm.unregister()
         except Exception:
+            # If VRM was not registered, continue without failing init.
             pass
 
         data_to_clear = [

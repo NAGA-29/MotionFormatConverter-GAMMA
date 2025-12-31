@@ -22,6 +22,7 @@
 - Follow the SOLID principles
 - Follow the KISS principle
 - Follow the YAGNI principle
+- Follow the DRY principle
 - Never neglect updating documentation when modifying code
 - Write unit tests for business logic
 - Avoid writing code that contains vulnerabilities

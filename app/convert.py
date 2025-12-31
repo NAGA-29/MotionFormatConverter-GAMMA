@@ -16,7 +16,7 @@ from app.services.conversion_service import (
     SUPPORTED_FORMATS,
     cache_conversion_result,
     cleanup_temp_files,
-    conversion_doc,
+    conversion_doc,  # re-exported for tests
     convert_file,
     get_cached_conversion,
     process_conversion,
