@@ -26,7 +26,6 @@
 - Write unit tests for business logic
 - Avoid writing code that contains vulnerabilities
 - Consider scalability
-- When creating methods, include PyDoc documentation
 
 ## Prohibited Actions
 
