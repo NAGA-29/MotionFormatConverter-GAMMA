@@ -1,4 +1,4 @@
-# Motion Format Converter API (Gamma Version)
+# Motion Forge Gateway
 
 ## プロジェクト概要
 Blender を利用して 3D モデルを別形式へ変換する Flask ベースの API です。
