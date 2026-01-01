@@ -1,9 +1,8 @@
-# Blender Converter
+# Motion Format Converter API (Gamma Version)
 
 ## プロジェクト概要
 Blender を利用して 3D モデルを別形式へ変換する Flask ベースの API です。
-Docker 環境で Blender を実行し、アップロードされたモデルを指定の
-フォーマットに変換して返却します。
+Docker 環境で Blender を実行し、アップロードされたモデルを指定のフォーマットに変換して返却します。
 
 ## セットアップ方法
 
@@ -194,7 +193,7 @@ PYTHONPATH=./app ruff check .
 - [ ] ユニットテストと統合テストの追加
 
 ### その他の機能
-- [ ] JSON形式の構造化ログ出力
+- [x] JSON形式の構造化ログ出力
 - [ ] 拡張されたヘルスチェックエンドポイント
 - [x] Swagger/OpenAPIによるAPI自動ドキュメント生成
 - [ ] 変換プロセスの進捗モニタリング機能
