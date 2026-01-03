@@ -1,6 +1,7 @@
 import sys
 import time
 import traceback
+import threading
 from datetime import datetime
 from functools import wraps
 
@@ -25,6 +26,7 @@ from app.services.conversion_service import (
     validate_file_size,
 )
 from app.utils.logger import AppLogger
+from app.utils.memory_profiler import init_memory_profiling, log_memory_snapshot
 
 app_settings = get_settings()
 
@@ -233,23 +235,58 @@ def health_check():
     )
 
 
+# Background task for memory profiling
+stop_event = threading.Event()
+
+def memory_profiling_task():
+    """Periodically logs memory usage."""
+    interval = app_settings.memory_profiling_interval
+    while not stop_event.is_set():
+        try:
+            log_memory_snapshot()
+        except Exception as e:
+            logger.error(f"Error in memory profiling task: {e}")
+        finally:
+            # Wait for the interval before the next run, even if an error occurred.
+            stop_event.wait(interval)
+
 if __name__ == "__main__":
+    profiling_thread = None
+    if app_settings.enable_memory_profiling:
+        init_memory_profiling()
+        profiling_thread = threading.Thread(target=memory_profiling_task, daemon=True)
+        profiling_thread.start()
+
+    exit_code = 0
     try:
         success, error = initialize_blender()
         if not success:
             logger.error(f"Failed to initialize Blender: {error}")
-            sys.exit(1)
-        logger.info("Blender initialized successfully")
+            exit_code = 1
 
-        success, error = setup_addons()
-        if not success:
-            logger.error(f"Failed to setup addons: {error}")
-            sys.exit(1)
+        if exit_code == 0:
+            logger.info("Blender initialized successfully")
+            success, error = setup_addons()
+            if not success:
+                logger.error(f"Failed to setup addons: {error}")
+                exit_code = 1
 
-        logger.info("Initialization complete")
+        if exit_code == 0:
+            logger.info("Initialization complete")
+            app.run(host="0.0.0.0", port=5000, debug=False, threaded=False)
 
-        app.run(host="0.0.0.0", port=5000, debug=False, threaded=False)
+    except KeyboardInterrupt:
+        logger.info("Application interrupted by user.")
+        exit_code = 130
     except Exception as exc:
         logger.error(f"Fatal error: {exc}")
         logger.error(traceback.format_exc())
-        sys.exit(1)
+        exit_code = 1
+    finally:
+        # Stop the background thread if it was started
+        if profiling_thread:
+            stop_event.set()
+            profiling_thread.join()
+            logger.info("Memory profiling thread stopped.")
+
+    sys.exit(exit_code)

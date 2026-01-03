@@ -29,12 +29,16 @@ class AppSettings:
     log_level: str = "INFO"
     log_format: str = "plain"
     log_file: Optional[str] = None
+    enable_memory_profiling: bool = False
+    memory_profiling_interval: int = 60
 
     @staticmethod
     def from_env() -> "AppSettings":
         log_format = os.getenv("LOG_FORMAT", "plain")
         if log_format not in {"plain", "json"}:
             log_format = "plain"
+
+        enable_memory_profiling = os.getenv("ENABLE_MEMORY_PROFILING", "false").lower() == "true"
 
         return AppSettings(
             app_env=os.getenv("APP_ENV", "development"),
@@ -48,6 +52,8 @@ class AppSettings:
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             log_format=log_format,
             log_file=os.getenv("LOG_FILE"),
+            enable_memory_profiling=enable_memory_profiling,
+            memory_profiling_interval=_env_int("MEMORY_PROFILING_INTERVAL", 60),
         )
 
     def is_local(self) -> bool:
