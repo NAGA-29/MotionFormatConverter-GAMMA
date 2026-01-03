@@ -251,27 +251,35 @@ if __name__ == "__main__":
     profiling_thread = threading.Thread(target=memory_profiling_task, daemon=True)
     profiling_thread.start()
 
+    exit_code = 0
     try:
         success, error = initialize_blender()
         if not success:
             logger.error(f"Failed to initialize Blender: {error}")
-            sys.exit(1)
-        logger.info("Blender initialized successfully")
+            exit_code = 1
 
-        success, error = setup_addons()
-        if not success:
-            logger.error(f"Failed to setup addons: {error}")
-            sys.exit(1)
+        if exit_code == 0:
+            logger.info("Blender initialized successfully")
+            success, error = setup_addons()
+            if not success:
+                logger.error(f"Failed to setup addons: {error}")
+                exit_code = 1
 
-        logger.info("Initialization complete")
+        if exit_code == 0:
+            logger.info("Initialization complete")
+            app.run(host="0.0.0.0", port=5000, debug=False, threaded=False)
 
-        app.run(host="0.0.0.0", port=5000, debug=False, threaded=False)
+    except KeyboardInterrupt:
+        logger.info("Application interrupted by user.")
+        exit_code = 130
     except Exception as exc:
         logger.error(f"Fatal error: {exc}")
         logger.error(traceback.format_exc())
+        exit_code = 1
     finally:
         # Stop the background thread
         stop_event.set()
         profiling_thread.join()
         logger.info("Memory profiling thread stopped.")
-        sys.exit(1)
+
+    sys.exit(exit_code)
