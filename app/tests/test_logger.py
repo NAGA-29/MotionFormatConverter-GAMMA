@@ -20,5 +20,17 @@ class TestAppLogger(unittest.TestCase):
         logger = logger_module.AppLogger.get_logger('test')
         self.assertEqual(logger.getEffectiveLevel(), logging.DEBUG)
 
+    def test_json_format_requires_structlog(self):
+        """JSON形式設定時にstructlogが無い場合は例外になることを確認する。"""
+        logger_module.AppLogger._configured = False
+        original_structlog = getattr(logger_module, "structlog", None)
+        try:
+            logger_module.structlog = None
+            with patch.dict(os.environ, {"LOG_FORMAT": "json"}):
+                with self.assertRaises(RuntimeError):
+                    logger_module.AppLogger.get_logger("test")
+        finally:
+            logger_module.structlog = original_structlog
+
 if __name__ == '__main__':
     unittest.main()

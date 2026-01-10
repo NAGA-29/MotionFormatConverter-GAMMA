@@ -22,7 +22,7 @@ PERSISTENT_CACHE_DIR = os.getenv("CONVERSION_CACHE_DIR", "/tmp/convert_cache")
 
 SUPPORTED_FORMATS: Dict[str, list] = {
     "fbx": ["application/octet-stream", "application/x-autodesk-fbx"],
-    "obj": ["application/x-tgif", "text/plain", "application/octet-stream"],
+    "obj": ["application/x-tgif", "text/plain", "application/octet-stream", "model/obj"],
     "gltf": ["model/gltf+json", "application/json"],
     "glb": ["model/gltf-binary"],
     "vrm": ["application/octet-stream", "model/gltf-binary", "model/vrml"],

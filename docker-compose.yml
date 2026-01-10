@@ -1,12 +1,11 @@
 services:
   api:
     build: .
-    platform: linux/amd64
     ports:
       - "5000:5000"
     volumes:
-      - ./app:/app
-      - ./output:/app/output
+      - ./app:/workspace/app
+      - ./output:/workspace/output
       - tmp-data:/tmp/convert
     deploy:
       resources:

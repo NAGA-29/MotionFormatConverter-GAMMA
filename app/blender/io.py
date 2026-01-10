@@ -5,7 +5,7 @@ import bpy
 from typing import Optional, Tuple
 
 from app.utils.logger import AppLogger
-from app.blender.setup import setup_vrm_addon
+from app.blender.setup import reset_factory_settings, setup_vrm_addon
 
 logger = AppLogger.get_logger(__name__)
 
@@ -26,7 +26,7 @@ def import_file(input_path: str, file_format: str) -> Tuple[bool, Optional[str]]
     try:
         logger.info(f"Importing {file_format} file: {input_path}")
 
-        bpy.ops.wm.read_factory_settings(use_empty=True)
+        reset_factory_settings()
         for obj in bpy.data.objects:
             bpy.data.objects.remove(obj, do_unlink=True)
 

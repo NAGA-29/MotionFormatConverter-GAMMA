@@ -61,7 +61,20 @@
   A. `fbx, obj, gltf, glb, vrm, bvh`。Blenderの対応範囲に準拠します。
 
 ## 6. 開発時のTips
-- テスト: Docker 内で `PYTHONPATH=./app python -m unittest discover app/tests`。Flask/Redis がない環境では一部スキップ。
-- Lint: `PYTHONPATH=./app ruff check .`
+- テスト: Docker 内で Blender Python を使って実行する。
+  ```bash
+  docker compose exec api bash -lc '
+  APP_ROOT=/workspace/app
+  BLENDER_PYTHON="$(blender --background --python-expr "import sys; print(sys.executable)" | awk "/\\/python/ {print; exit}")"
+  PYTHONPATH="$APP_ROOT" "$BLENDER_PYTHON" -m unittest discover -s "$APP_ROOT/tests" -t "$APP_ROOT"
+  '
+  ```
+- Lint:
+  ```bash
+  docker compose exec api bash -lc '
+  APP_ROOT=/workspace/app
+  PYTHONPATH="$APP_ROOT" ruff check "$APP_ROOT"
+  '
+  ```
 - コード構造: API (`app/convert.py`)、変換サービス (`app/services/`)、Blender I/O (`app/blender/`) に分離済み。モックはテストで定義済み。
 - VRM/BVH の動作確認は Blender 付きコンテナで行うこと。

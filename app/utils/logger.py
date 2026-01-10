@@ -1,8 +1,15 @@
 import os
 import logging
 import logging.config
-import structlog
-from typing import Union
+from typing import TYPE_CHECKING, Union
+
+try:
+    import structlog
+except ModuleNotFoundError:  # pragma: no cover - optional in local test runs
+    structlog = None
+
+if TYPE_CHECKING:
+    import structlog as structlog_types
 
 
 class AppLogger:
@@ -26,6 +33,8 @@ class AppLogger:
             handler_names.append("file")
 
         if log_format == "json":
+            if structlog is None:
+                raise RuntimeError("structlog is required when LOG_FORMAT=json")
             # Configure structlog for JSON output
             structlog.configure(
                 processors=[
@@ -108,12 +117,14 @@ class AppLogger:
         logging.getLogger(__name__).debug("Logger configured")
 
     @classmethod
-    def get_logger(cls, name: str = None) -> Union[logging.Logger, structlog.stdlib.BoundLogger]:
+    def get_logger(cls, name: str = None) -> Union[logging.Logger, "structlog.stdlib.BoundLogger"]:
         if not cls._configured:
             cls.configure()
 
         log_format = os.getenv("LOG_FORMAT", "plain").lower()
         if log_format == "json":
+            if structlog is None:
+                raise RuntimeError("structlog is required when LOG_FORMAT=json")
             logger = structlog.get_logger(name)
         else:
             logger = logging.getLogger(name)

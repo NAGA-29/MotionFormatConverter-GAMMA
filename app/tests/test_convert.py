@@ -32,6 +32,7 @@ mock_bpy.ops.import_scene.gltf.side_effect = _add_obj_side_effect
 mock_bpy.ops.import_scene.vrm.side_effect = _add_obj_side_effect
 mock_bpy.ops.import_anim.bvh.side_effect = _add_obj_side_effect
 mock_bpy.ops.object.delete.side_effect = _clear_obj_side_effect
+mock_bpy.ops.wm.read_factory_settings = Mock()
 
 mock_bpy.ops.export_scene.fbx.side_effect = _export_side_effect
 mock_bpy.ops.export_scene.obj.side_effect = _export_side_effect
@@ -46,6 +47,8 @@ mock_bpy.data.images = []
 # For BVH export check, start with no actions
 mock_bpy.data.actions = []
 mock_bpy.data.armatures = []
+mock_bpy.utils = Mock()
+mock_bpy.utils.user_resource.return_value = None
 sys.modules['bpy'] = mock_bpy
 
 mock_vrm_addon = types.ModuleType("io_scene_vrm")
@@ -53,6 +56,8 @@ mock_vrm_addon.register = Mock()
 # Add spec to the mock module to satisfy importlib.reload
 spec = Mock()
 spec.name = "io_scene_vrm"
+spec.loader = Mock()
+spec.loader.exec_module = Mock()
 mock_vrm_addon.__spec__ = spec
 sys.modules['io_scene_vrm'] = mock_vrm_addon
 
@@ -186,8 +191,8 @@ class TestFileConversion(unittest.TestCase):
                 'file': (temp_file, 'test.fbx')
             }
             response = self.app.post('/convert?output_format=glb', data=data, content_type='multipart/form-data')
-            self.assertEqual(response.status_code, 500)
-            self.assertEqual(response.json['error'], "Error during conversion")
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json['error'], "Error during conversion")
 
     def test_rate_limit(self):
         """レートリミットが適用されることを確認する。"""
@@ -345,6 +350,78 @@ class TestFileConversion(unittest.TestCase):
             }
             response = self.app.post('/convert?output_format=glb', data=data, content_type='multipart/form-data')
             self.assertEqual(response.status_code, 200)
+
+
+class TestVrmAddonSetup(unittest.TestCase):
+    """VRMアドオンのセットアップ処理を検証するテスト群。"""
+
+    def setUp(self):
+        """テスト用のモック状態を初期化する。"""
+        mock_bpy.utils.user_resource.return_value = None
+        self._bpy_patcher = patch("app.blender.setup.bpy", mock_bpy)
+        self._bpy_patcher.start()
+        self._vrm_module_patcher = patch.dict(sys.modules, {"io_scene_vrm": mock_vrm_addon})
+        self._vrm_module_patcher.start()
+
+    def tearDown(self):
+        """セットアップしたパッチを解除する。"""
+        self._vrm_module_patcher.stop()
+        self._bpy_patcher.stop()
+
+    def test_setup_vrm_addon_uses_env_scripts_path(self):
+        """環境変数で指定されたスクリプトパスが利用されることを確認する。"""
+        from app.blender.setup import setup_vrm_addon
+
+        original_sys_path = list(sys.path)
+        try:
+            with patch.dict(os.environ, {"BLENDER_USER_SCRIPTS": "/custom/scripts"}):
+                setup_vrm_addon()
+                self.assertIn("/custom/scripts/addons", sys.path)
+                self.assertIn("/custom/scripts/addons/modules", sys.path)
+        finally:
+            sys.path[:] = original_sys_path
+
+    def test_setup_vrm_addon_uses_bpy_resource_path(self):
+        """環境変数がない場合にbpyのリソースパスが利用されることを確認する。"""
+        from app.blender.setup import setup_vrm_addon
+
+        original_sys_path = list(sys.path)
+        try:
+            with patch.dict(os.environ, {}, clear=True):
+                mock_bpy.utils.user_resource.return_value = "/resource/scripts"
+                setup_vrm_addon()
+                self.assertIn("/resource/scripts/addons", sys.path)
+                self.assertIn("/resource/scripts/addons/modules", sys.path)
+        finally:
+            sys.path[:] = original_sys_path
+
+
+class TestFactoryResetToggle(unittest.TestCase):
+    """ファクトリーリセットの環境変数制御を検証するテスト群。"""
+
+    def setUp(self):
+        """ファクトリーリセット関連のモックを初期化する。"""
+        mock_bpy.ops.wm.read_factory_settings.reset_mock()
+
+    def test_clear_scene_skips_factory_reset_by_default(self):
+        """既定値ではファクトリーリセットが呼ばれないことを確認する。"""
+        from app.blender.setup import clear_scene
+
+        with patch.dict(os.environ, {}, clear=True):
+            success, error = clear_scene()
+        self.assertTrue(success)
+        self.assertIsNone(error)
+        self.assertFalse(mock_bpy.ops.wm.read_factory_settings.called)
+
+    def test_clear_scene_calls_factory_reset_when_enabled(self):
+        """環境変数指定時にファクトリーリセットが呼ばれることを確認する。"""
+        from app.blender.setup import clear_scene
+
+        with patch.dict(os.environ, {"BLENDER_FACTORY_RESET": "1"}):
+            success, error = clear_scene()
+        self.assertTrue(success)
+        self.assertIsNone(error)
+        self.assertTrue(mock_bpy.ops.wm.read_factory_settings.called)
 
 @unittest.skipUnless(flask, "Flask is not installed in the test environment")
 class TestIsLocalEnv(unittest.TestCase):

@@ -1,4 +1,5 @@
 import gc
+import os
 import sys
 import traceback
 from typing import Optional, Tuple
@@ -8,6 +9,24 @@ import bpy
 from app.utils.logger import AppLogger
 
 logger = AppLogger.get_logger(__name__)
+
+FACTORY_RESET_ENV = "BLENDER_FACTORY_RESET"
+FACTORY_RESET_DEFAULT = "0"
+FACTORY_RESET_ENABLED_VALUES = {"1", "true", "yes", "on"}
+
+
+def should_reset_factory_settings() -> bool:
+    """ファクトリーリセットを実行するかを環境変数で判定する。"""
+    raw_value = os.environ.get(FACTORY_RESET_ENV, FACTORY_RESET_DEFAULT)
+    return raw_value.strip().lower() in FACTORY_RESET_ENABLED_VALUES
+
+
+def reset_factory_settings() -> None:
+    """環境変数が許可する場合のみファクトリーリセットを実行する。"""
+    if not should_reset_factory_settings():
+        logger.debug("Factory reset skipped (BLENDER_FACTORY_RESET disabled).")
+        return
+    bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
 def handle_blender_error(error_type, value, tb):
@@ -25,7 +44,7 @@ def handle_blender_error(error_type, value, tb):
         logger.error(line.strip())
 
     try:
-        bpy.ops.wm.read_factory_settings(use_empty=True)
+        reset_factory_settings()
     except Exception:
         # If the reset itself fails, continue to surface the original exception.
         pass
@@ -36,7 +55,7 @@ def handle_blender_error(error_type, value, tb):
 def clear_scene() -> Tuple[bool, Optional[str]]:
     """Blenderシーンを初期化し、オブジェクト/データブロックを削除してGCを実行する。(成功可否, メッセージ)を返す。"""
     try:
-        bpy.ops.wm.read_factory_settings(use_empty=True)
+        reset_factory_settings()
 
         scene = bpy.context.scene
         scene.render.engine = "BLENDER_WORKBENCH"
@@ -64,12 +83,33 @@ def clear_scene() -> Tuple[bool, Optional[str]]:
 
 
 def setup_vrm_addon() -> Tuple[bool, Optional[str]]:
-    """VRMアドオンのパスを追加し、GLTFを先に有効化してVRMを登録する。(成功可否, メッセージ)を返す。"""
+    """VRMアドオンの検索パスを追加し、GLTFを先に有効化してVRMを登録する。(成功可否, メッセージ)を返す。"""
     try:
-        addon_paths = [
-            "/usr/local/blender/4.3/scripts/addons",
-            "/usr/local/blender/4.3/scripts/addons/modules",
-        ]
+        script_roots = []
+        user_scripts = os.environ.get("BLENDER_USER_SCRIPTS")
+        if user_scripts:
+            script_roots.append(user_scripts)
+
+        system_scripts = os.environ.get("BLENDER_SYSTEM_SCRIPTS")
+        if system_scripts:
+            script_roots.append(system_scripts)
+
+        try:
+            scripts_resource = bpy.utils.user_resource("SCRIPTS")
+            if scripts_resource:
+                script_roots.append(scripts_resource)
+        except Exception:
+            # Blenderのユーザーリソース取得に失敗した場合は環境変数のみを使う
+            pass
+
+        if not script_roots:
+            script_roots.append("/usr/local/blender/scripts")
+
+        addon_paths = []
+        for root in dict.fromkeys(script_roots):
+            addons_dir = os.path.join(root, "addons")
+            addon_paths.append(addons_dir)
+            addon_paths.append(os.path.join(addons_dir, "modules"))
         for path in addon_paths:
             if path not in sys.path:
                 sys.path.append(path)
@@ -81,7 +121,17 @@ def setup_vrm_addon() -> Tuple[bool, Optional[str]]:
         import importlib
         import io_scene_vrm
 
-        importlib.reload(io_scene_vrm)
+        module_spec = getattr(io_scene_vrm, "__spec__", None)
+        module_loader = getattr(module_spec, "loader", None) if module_spec else None
+        if module_loader is not None:
+            importlib.reload(io_scene_vrm)
+        else:
+            logger.debug("Skipping VRM addon reload because module spec is missing.")
+
+        if not hasattr(io_scene_vrm, "register"):
+            logger.error("VRM addon is missing register()")
+            return False, "VRM addon is missing register()"
+
         io_scene_vrm.register()
 
         if not hasattr(bpy.ops.import_scene, "vrm"):
@@ -121,7 +171,7 @@ def initialize_blender() -> Tuple[bool, Optional[str]]:
     try:
         sys.excepthook = handle_blender_error
 
-        bpy.ops.wm.read_factory_settings(use_empty=True)
+        reset_factory_settings()
 
         success, error = setup_addons()
         if not success:
