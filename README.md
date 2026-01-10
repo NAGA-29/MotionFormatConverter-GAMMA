@@ -54,6 +54,25 @@ LOG_LEVEL=DEBUG LOG_FORMAT=json LOG_FILE=/var/log/blender-api.log \
 docker compose up
 ```
 
+## 対応ファイル形式
+
+このAPIは以下の3Dファイル形式に対応しています:
+
+| 形式 | 拡張子 | 入力 | 出力 | 説明 |
+|------|--------|------|------|------|
+| **FBX** | `.fbx` | ✅ | ✅ | Autodesk FBX形式。アニメーション、マテリアル、リグを含む総合的な3Dフォーマット |
+| **OBJ** | `.obj` | ✅ | ✅ | Wavefront OBJ形式。シンプルなジオメトリとマテリアルの定義 |
+| **glTF** | `.gltf` | ✅ | ✅ | glTF 2.0 JSON形式。Web向けの効率的な3D転送フォーマット |
+| **GLB** | `.glb` | ✅ | ✅ | glTF 2.0 Binary形式。glTFの単一バイナリ版 |
+| **VRM** | `.vrm` | ✅ | ✅ | VRM形式。人型アバター向けのglTF拡張フォーマット |
+| **BVH** | `.bvh` | ✅ | ✅ | BioVision Hierarchy形式。モーションキャプチャデータ用 |
+
+### フォーマット別の注意事項
+
+- **BVH出力**: シーン内にアニメーションデータ(`bpy.data.actions`)が必要です。アニメーションがない場合はエラー(500)が返されます。
+- **VRM**: glTFアドオンとVRMアドオンの両方が有効化されている必要があります。
+- **入力形式の自動判定**: アップロードされたファイルの拡張子から入力形式を自動判定します。
+
 ## 変換エンドポイントと使用例
 
 ### POST /convert
@@ -64,12 +83,12 @@ docker compose up
 
 | パラメータ | 型 | 説明 | 必須 |
 |---|---|---|---|
-| `output_format` | string | 出力したいファイル形式 (例: `glb`, `fbx`, `obj`) | はい |
+| `output_format` | string | 出力形式 (`fbx`, `obj`, `gltf`, `glb`, `vrm`, `bvh` のいずれか) | はい |
 
 **リクエストボディ**
 
 - `multipart/form-data`
-- `file`: 変換したい 3D モデルファイル
+- `file`: 変換したい 3D モデルファイル (対応形式: fbx, obj, gltf, glb, vrm, bvh)
 
 **使用例**
 
@@ -81,10 +100,29 @@ curl -F "file=@model.fbx" \
      --output model.glb
 ```
 
+その他の変換例:
+
+```bash
+# OBJ → FBX
+curl -F "file=@model.obj" \
+     "http://localhost:5000/convert?output_format=fbx" \
+     --output model.fbx
+
+# GLB → VRM (アバター変換)
+curl -F "file=@avatar.glb" \
+     "http://localhost:5000/convert?output_format=vrm" \
+     --output avatar.vrm
+
+# FBX → BVH (アニメーションデータが必要)
+curl -F "file=@animation.fbx" \
+     "http://localhost:5000/convert?output_format=bvh" \
+     --output animation.bvh
+```
+
 ## クイックスタート（開発者向け）
 - 依存: Docker / Docker Compose、ポート `5000`、ローカルのディスク空き（キャッシュ用 `/tmp/convert_cache` 既定）
 - 起動: `docker compose up --build`
-- 動作確認: `curl -F "file=@example.fbx" "http://localhost:5000/convert?output_format=glb" -o example.glb`
+- 動作確認: `curl -F "file=assets/@example.fbx" "http://localhost:5000/convert?output_format=glb" -o example.glb`
 - ドキュメント: `http://localhost:5000/apidocs`（Swagger UI）
 - ヘルスチェック: `GET /health`（Redis疎通を含む）
 

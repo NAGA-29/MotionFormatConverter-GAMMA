@@ -159,6 +159,8 @@ def too_many_requests(error):
 @swag_from(
     {
         "tags": ["conversion"],
+        "summary": "3Dモデルファイルを別形式に変換",
+        "description": "対応形式: FBX (.fbx), OBJ (.obj), glTF (.gltf), GLB (.glb), VRM (.vrm), BVH (.bvh)。入力形式はファイルの拡張子から自動判定されます。BVH出力にはアニメーションデータが必要です。",
         "consumes": ["multipart/form-data"],
         "parameters": [
             {
@@ -166,21 +168,23 @@ def too_many_requests(error):
                 "in": "formData",
                 "type": "file",
                 "required": True,
-                "description": "Input file to convert. The file extension determines the input format.",
+                "description": "変換する3Dモデルファイル。対応形式: fbx, obj, gltf, glb, vrm, bvh。ファイル拡張子から入力形式を自動判定します。",
             },
             {
                 "name": "output_format",
                 "in": "query",
                 "type": "string",
                 "required": True,
-                "description": "The desired output format (e.g., glb, fbx, obj).",
+                "enum": ["fbx", "obj", "gltf", "glb", "vrm", "bvh"],
+                "description": "出力形式。fbx, obj, gltf, glb, vrm, bvh のいずれかを指定してください。",
             },
         ],
         "responses": {
-            200: {"description": "Converted file"},
-            400: {"description": "Invalid input"},
-            429: {"description": "Rate limit exceeded"},
-            500: {"description": "Conversion error"},
+            200: {"description": "変換成功。変換後のファイルが返されます。"},
+            400: {"description": "無効な入力。ファイルが未選択、対応外の形式、またはパラメータ不足。"},
+            413: {"description": "ファイルサイズが上限を超えています。"},
+            429: {"description": "レート制限超過。しばらく待ってから再試行してください。"},
+            500: {"description": "変換エラー。ファイルが破損しているか、BVH出力時にアニメーションデータが不足している可能性があります。"},
         },
     }
 )
