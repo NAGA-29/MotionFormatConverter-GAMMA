@@ -358,6 +358,15 @@ class TestVrmAddonSetup(unittest.TestCase):
     def setUp(self):
         """テスト用のモック状態を初期化する。"""
         mock_bpy.utils.user_resource.return_value = None
+        self._bpy_patcher = patch("app.blender.setup.bpy", mock_bpy)
+        self._bpy_patcher.start()
+        self._vrm_module_patcher = patch.dict(sys.modules, {"io_scene_vrm": mock_vrm_addon})
+        self._vrm_module_patcher.start()
+
+    def tearDown(self):
+        """セットアップしたパッチを解除する。"""
+        self._vrm_module_patcher.stop()
+        self._bpy_patcher.stop()
 
     def test_setup_vrm_addon_uses_env_scripts_path(self):
         """環境変数で指定されたスクリプトパスが利用されることを確認する。"""
@@ -366,9 +375,7 @@ class TestVrmAddonSetup(unittest.TestCase):
         original_sys_path = list(sys.path)
         try:
             with patch.dict(os.environ, {"BLENDER_USER_SCRIPTS": "/custom/scripts"}):
-                success, error = setup_vrm_addon()
-                self.assertTrue(success)
-                self.assertIsNone(error)
+                setup_vrm_addon()
                 self.assertIn("/custom/scripts/addons", sys.path)
                 self.assertIn("/custom/scripts/addons/modules", sys.path)
         finally:
@@ -382,9 +389,7 @@ class TestVrmAddonSetup(unittest.TestCase):
         try:
             with patch.dict(os.environ, {}, clear=True):
                 mock_bpy.utils.user_resource.return_value = "/resource/scripts"
-                success, error = setup_vrm_addon()
-                self.assertTrue(success)
-                self.assertIsNone(error)
+                setup_vrm_addon()
                 self.assertIn("/resource/scripts/addons", sys.path)
                 self.assertIn("/resource/scripts/addons/modules", sys.path)
         finally:

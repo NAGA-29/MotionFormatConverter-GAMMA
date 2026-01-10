@@ -121,7 +121,17 @@ def setup_vrm_addon() -> Tuple[bool, Optional[str]]:
         import importlib
         import io_scene_vrm
 
-        importlib.reload(io_scene_vrm)
+        module_spec = getattr(io_scene_vrm, "__spec__", None)
+        module_loader = getattr(module_spec, "loader", None) if module_spec else None
+        if module_loader is not None:
+            importlib.reload(io_scene_vrm)
+        else:
+            logger.debug("Skipping VRM addon reload because module spec is missing.")
+
+        if not hasattr(io_scene_vrm, "register"):
+            logger.error("VRM addon is missing register()")
+            return False, "VRM addon is missing register()"
+
         io_scene_vrm.register()
 
         if not hasattr(bpy.ops.import_scene, "vrm"):
